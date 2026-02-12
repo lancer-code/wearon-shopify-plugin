@@ -7,9 +7,11 @@ import {
   createPoseOverlay,
   getStoreConfig,
   getRetailCreditPriceLabel,
+  getShopperCreditBalance,
   getUserCamera,
   isAcknowledged,
   openCreditCheckout,
+  pollShopperCreditBalance,
   resolveTryOnAccess,
   shouldRequireLogin,
 } from '../extensions/wearon-tryon/assets/tryon-privacy-flow.js'
@@ -153,6 +155,73 @@ describe('tryon privacy flow', () => {
 
     expect(didOpen).toBe(true)
     expect(opened).toEqual([['https://store.myshopify.com/cart/123:1', '_blank', 'noopener,noreferrer']])
+  })
+
+  test('reads shopper balance payload from proxy endpoint', async () => {
+    const apiClient = {
+      get() {
+        return Promise.resolve({
+          data: {
+            data: {
+              balance: 2,
+              total_purchased: 5,
+              total_spent: 3,
+            },
+          },
+        })
+      },
+    }
+
+    const balance = await getShopperCreditBalance(apiClient)
+    expect(balance).toEqual({
+      balance: 2,
+      totalPurchased: 5,
+      totalSpent: 3,
+    })
+  })
+
+  test('polls shopper balance every interval until credits appear', async () => {
+    let callCount = 0
+    const apiClient = {
+      get() {
+        callCount += 1
+        if (callCount < 3) {
+          return Promise.resolve({
+            data: {
+              data: {
+                balance: 0,
+                total_purchased: 0,
+                total_spent: 0,
+              },
+            },
+          })
+        }
+
+        return Promise.resolve({
+          data: {
+            data: {
+              balance: 2,
+              total_purchased: 2,
+              total_spent: 0,
+            },
+          },
+        })
+      },
+    }
+
+    const delays = []
+    const result = await pollShopperCreditBalance(apiClient, {
+      waitFn(delayMs) {
+        delays.push(delayMs)
+        return Promise.resolve()
+      },
+      intervalMs: 5000,
+      timeoutMs: 60000,
+    })
+
+    expect(result.balance).toBe(2)
+    expect(callCount).toBe(3)
+    expect(delays).toEqual([5000, 5000])
   })
 
   test('builds shopper-friendly retail price label for resell mode', () => {

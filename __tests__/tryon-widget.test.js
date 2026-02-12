@@ -10,6 +10,35 @@ const widgetBundlePath = path.resolve(
   currentDir,
   '../extensions/wearon-tryon/assets/tryon-widget.js',
 )
+const tryOnBlockPath = path.resolve(
+  currentDir,
+  '../extensions/wearon-tryon/blocks/tryon-block.liquid',
+)
+
+function collectBundleModules(entryPath, visited = new Set()) {
+  const absolutePath = path.resolve(entryPath)
+  if (visited.has(absolutePath)) {
+    return []
+  }
+  visited.add(absolutePath)
+
+  const source = readFileSync(absolutePath, 'utf8')
+  const modules = [{ filePath: absolutePath, source }]
+  const importRegex = /import\s+(?:[^'"]+from\s+)?['"](.+?)['"]/g
+  let match = importRegex.exec(source)
+
+  while (match) {
+    const specifier = match[1]
+    if (specifier && specifier.startsWith('.')) {
+      modules.push(
+        ...collectBundleModules(path.resolve(path.dirname(absolutePath), specifier), visited),
+      )
+    }
+    match = importRegex.exec(source)
+  }
+
+  return modules
+}
 
 class FakeElement {
   constructor(tagName) {
@@ -73,6 +102,19 @@ function createHostElement() {
   }
 }
 
+function createSessionStorageMock(initial = {}) {
+  const storage = new Map(Object.entries(initial))
+
+  return {
+    getItem(key) {
+      return storage.has(key) ? storage.get(key) : null
+    },
+    setItem(key, value) {
+      storage.set(key, String(value))
+    },
+  }
+}
+
 function findText(node, targetText) {
   if (!node) {
     return false
@@ -90,6 +132,12 @@ function findText(node, targetText) {
 }
 
 describe('tryon widget', () => {
+  test('theme block loads widget using module script tag', () => {
+    const blockTemplate = readFileSync(tryOnBlockPath, 'utf8')
+    expect(blockTemplate).toContain('<script type="module"')
+    expect(blockTemplate).toContain("{{ 'tryon-widget.js' | asset_url }}")
+  })
+
   test('renders inside shadow DOM', () => {
     const hostElement = createHostElement()
     const documentRef = createFakeDocument()
@@ -146,6 +194,115 @@ describe('tryon widget', () => {
     expect(widget.button.textContent).toBe('Try On')
   })
 
+  test('restores privacy acknowledgment from session storage', () => {
+    const hostElement = createHostElement()
+    const documentRef = createFakeDocument()
+    const sessionStorageRef = createSessionStorageMock({
+      wearon_privacy_ack_v1: 'true',
+    })
+
+    const widget = createTryOnWidget(hostElement, {
+      documentRef,
+      sessionStorageRef,
+    })
+
+    expect(widget.isPrivacyAcknowledged()).toBe(true)
+    expect(widget.privacyButton.disabled).toBe(true)
+    expect(widget.privacyButton.textContent).toBe('Acknowledged')
+    expect(widget.button.disabled).toBe(false)
+  })
+
+  test('applies billing-mode access resolution in widget runtime', async () => {
+    const hostElement = createHostElement()
+    const documentRef = createFakeDocument()
+
+    const widget = createTryOnWidget(hostElement, {
+      documentRef,
+      sessionStorageRef: createSessionStorageMock(),
+      apiClient: { get() {} },
+      resolveTryOnAccessFn() {
+        return Promise.resolve({
+          billingMode: 'resell_mode',
+          retailCreditPrice: 0.5,
+          requireLogin: true,
+          retailCreditPriceLabel: '$0.50 per credit',
+        })
+      },
+    })
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(widget.requiresLogin()).toBe(true)
+    expect(widget.button.disabled).toBe(false)
+    expect(widget.button.textContent).toBe('Sign In to Try On')
+    await widget.button.click()
+    expect(widget.liveRegion.textContent).toContain('Please sign in to your store account')
+  })
+
+  test('in resell mode with zero balance, shows purchase flow and enables try-on after polling', async () => {
+    const hostElement = createHostElement()
+    const documentRef = createFakeDocument()
+    const checkoutLinks = []
+    const shopperBalanceChecks = []
+
+    const widget = createTryOnWidget(hostElement, {
+      documentRef,
+      sessionStorageRef: createSessionStorageMock(),
+      apiClient: { get() {} },
+      resolveTryOnAccessFn() {
+        return Promise.resolve({
+          billingMode: 'resell_mode',
+          retailCreditPrice: 0.5,
+          requireLogin: false,
+          retailCreditPriceLabel: '$0.50 per credit',
+          shopDomain: 'store.myshopify.com',
+          shopifyVariantId: '123456789',
+        })
+      },
+      getShopperCreditBalanceFn() {
+        shopperBalanceChecks.push('initial')
+        return Promise.resolve({
+          balance: 0,
+          totalPurchased: 0,
+          totalSpent: 0,
+        })
+      },
+      openCreditCheckoutFn(link) {
+        checkoutLinks.push(link)
+        return true
+      },
+      pollShopperCreditBalanceFn() {
+        shopperBalanceChecks.push('poll')
+        return Promise.resolve({
+          balance: 2,
+          totalPurchased: 2,
+          totalSpent: 0,
+        })
+      },
+    })
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(widget.purchaseButton.className).toContain('wearon-widget__purchase--active')
+    expect(widget.button.disabled).toBe(true)
+    expect(widget.button.textContent).toBe('Buy Credits to Try On')
+    expect(widget.creditBalanceText.textContent).toContain('0 credits')
+
+    await widget.purchaseButton.click()
+    await Promise.resolve()
+
+    expect(checkoutLinks).toEqual(['https://store.myshopify.com/cart/123456789:1'])
+    expect(shopperBalanceChecks).toEqual(['initial', 'poll'])
+    expect(widget.button.textContent).toBe('Try On')
+    expect(widget.creditBalanceText.textContent).toContain('2 credits')
+    expect(widget.liveRegion.textContent).toContain('Credits updated')
+
+    widget.privacyButton.click()
+    expect(widget.button.disabled).toBe(false)
+  })
+
   test('initializes all data-wearon-tryon hosts', () => {
     const hostOne = createHostElement()
     const hostTwo = createHostElement()
@@ -163,19 +320,34 @@ describe('tryon widget', () => {
     expect(hostTwo.shadowRoot).toBeTruthy()
   })
 
-  test('bundle is below 50KB gzipped', () => {
-    const bundle = readFileSync(widgetBundlePath, 'utf8')
-    const size = gzipSync(bundle).byteLength
+  test('bundle graph is below 50KB gzipped (entry + imported modules)', () => {
+    const modules = collectBundleModules(widgetBundlePath)
+    const combinedBundle = modules.map((mod) => mod.source).join('\n')
+    const size = gzipSync(combinedBundle).byteLength
 
+    expect(modules.length).toBeGreaterThan(1)
     expect(size).toBeLessThan(50 * 1024)
   })
 
-  test('bundle transfer estimate stays below 2s on constrained 3G', () => {
-    const bundle = readFileSync(widgetBundlePath, 'utf8')
-    const gzippedBytes = gzipSync(bundle).byteLength
+  test('3G load budget stays below 2s (transfer + runtime initialization)', () => {
+    const modules = collectBundleModules(widgetBundlePath)
+    const combinedBundle = modules.map((mod) => mod.source).join('\n')
+    const gzippedBytes = gzipSync(combinedBundle).byteLength
     const constrained3GBitsPerSecond = 400 * 1024
-    const estimatedSeconds = (gzippedBytes * 8) / constrained3GBitsPerSecond
+    const estimatedTransferMs = ((gzippedBytes * 8) / constrained3GBitsPerSecond) * 1000
 
-    expect(estimatedSeconds).toBeLessThan(2)
+    const hosts = [createHostElement(), createHostElement(), createHostElement()]
+    const root = {
+      querySelectorAll() {
+        return hosts
+      },
+    }
+    const documentRef = createFakeDocument()
+    const startedAt = performance.now()
+    const initializedCount = initTryOnWidgets(root, { documentRef })
+    const runtimeInitMs = performance.now() - startedAt
+
+    expect(initializedCount).toBe(3)
+    expect(estimatedTransferMs + runtimeInitMs).toBeLessThan(2000)
   })
 })

@@ -1,10 +1,28 @@
-import { capturePhoto, createPoseOverlay, getUserCamera } from './tryon-privacy-flow.js'
+import {
+  acknowledgePrivacy as persistPrivacyAcknowledgment,
+  buildCreditCartLink,
+  capturePhoto,
+  createPoseOverlay,
+  getShopperCreditBalance,
+  getUserCamera,
+  isAcknowledged,
+  openCreditCheckout,
+  pollShopperCreditBalance,
+  resolveTryOnAccess,
+} from './tryon-privacy-flow.js'
 
 const DEFAULT_BUTTON_TEXT = 'Try On'
+const DEFAULT_SIGN_IN_BUTTON_TEXT = 'Sign In to Try On'
 const DEFAULT_LOADING_TEXT = 'Loading...'
 const DEFAULT_LOADING_DELAY_MS = 700
 const PRIVACY_MESSAGE = 'Your photo is deleted within 6 hours'
 const DEFAULT_AUDIO_CUE = 'Center yourself.'
+const DEFAULT_SHOPPER_BALANCE_ENDPOINT = '/api/shopper-credits/balance'
+const POSE_DIRECTION_CUES = {
+  left: 'Move left.',
+  right: 'Move right.',
+  center: 'Center yourself.',
+}
 
 function clearChildren(node) {
   if (!node || typeof node.firstChild === 'undefined' || typeof node.removeChild !== 'function') {
@@ -38,7 +56,16 @@ export function createTryOnWidget(hostElement, options = {}) {
   const shadowRoot = getShadowRoot(hostElement)
   const schedule = options.schedule || ((callback, delay) => globalThis.setTimeout(callback, delay))
   const getUserCameraFn = options.getUserCameraFn || getUserCamera
+  const resolveTryOnAccessFn = options.resolveTryOnAccessFn || resolveTryOnAccess
+  const getShopperCreditBalanceFn = options.getShopperCreditBalanceFn || getShopperCreditBalance
+  const pollShopperCreditBalanceFn = options.pollShopperCreditBalanceFn || pollShopperCreditBalance
+  const openCreditCheckoutFn = options.openCreditCheckoutFn || openCreditCheckout
   const captureFrameFn = options.captureFrameFn || capturePhoto
+  const defaultButtonText = options.buttonText || DEFAULT_BUTTON_TEXT
+  const signInButtonText = options.signInButtonText || DEFAULT_SIGN_IN_BUTTON_TEXT
+  const apiClient = options.apiClient
+  const sessionStorageRef = options.sessionStorageRef
+  const getPoseHint = options.getPoseHint || (() => 'center')
   const speakGuidance =
     options.speakGuidance ||
     ((message) => {
@@ -112,6 +139,28 @@ export function createTryOnWidget(hostElement, options = {}) {
       color: #667085;
       font-size: 12px;
       line-height: 1.3;
+    }
+    .wearon-widget__credit-balance {
+      margin: 0;
+      color: #344054;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .wearon-widget__purchase {
+      display: none;
+      border: 0;
+      border-radius: 10px;
+      background: #0069ff;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 600;
+      min-height: 44px;
+      min-width: 44px;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+    .wearon-widget__purchase--active {
+      display: block;
     }
     .wearon-widget__camera {
       display: none;
@@ -213,13 +262,23 @@ export function createTryOnWidget(hostElement, options = {}) {
   const button = doc.createElement('button')
   button.type = 'button'
   button.className = 'wearon-widget__button'
-  button.textContent = options.buttonText || DEFAULT_BUTTON_TEXT
+  button.textContent = defaultButtonText
   button.disabled = true
   button.setAttribute('aria-label', 'Start virtual try-on camera')
 
   const badge = doc.createElement('footer')
   badge.className = 'wearon-widget__badge'
   badge.textContent = 'Powered by WearOn'
+
+  const creditBalanceText = doc.createElement('p')
+  creditBalanceText.className = 'wearon-widget__credit-balance'
+  creditBalanceText.textContent = ''
+
+  const purchaseButton = doc.createElement('button')
+  purchaseButton.type = 'button'
+  purchaseButton.className = 'wearon-widget__purchase'
+  purchaseButton.textContent = 'Buy Credits'
+  purchaseButton.setAttribute('aria-label', 'Buy try-on credits')
 
   const cameraView = doc.createElement('video')
   cameraView.className = 'wearon-widget__camera'
@@ -238,6 +297,11 @@ export function createTryOnWidget(hostElement, options = {}) {
   let latestCapturedPhoto = null
   let activeStream = null
   let audioGuidanceEnabled = false
+  let privacyAcknowledged = isAcknowledged(sessionStorageRef)
+  let requireLogin = false
+  let billingMode = 'absorb_mode'
+  let shopperBalance = 0
+  let currentAccess = null
 
   const liveRegion = doc.createElement('div')
   liveRegion.className = 'wearon-widget__visually-hidden'
@@ -256,20 +320,73 @@ export function createTryOnWidget(hostElement, options = {}) {
     liveRegion.textContent = message
   }
 
-  const setLoading = (isLoading) => {
-    button.disabled = Boolean(isLoading)
-    button.textContent = isLoading
-      ? options.loadingText || DEFAULT_LOADING_TEXT
-      : options.buttonText || DEFAULT_BUTTON_TEXT
-    if (isLoading) {
-      setLiveStatus('Opening camera.')
+  const setTryOnButtonState = () => {
+    const hasResellCredits = billingMode !== 'resell_mode' || shopperBalance > 0
+
+    if (requireLogin) {
+      button.disabled = false
+      button.textContent = signInButtonText
+      button.setAttribute('aria-label', 'Sign in required before virtual try-on')
+      purchaseButton.className = 'wearon-widget__purchase'
+      return
     }
+
+    if (billingMode === 'resell_mode' && !hasResellCredits) {
+      button.disabled = true
+      button.textContent = 'Buy Credits to Try On'
+      button.setAttribute('aria-label', 'Buy credits before virtual try-on')
+      purchaseButton.className = 'wearon-widget__purchase wearon-widget__purchase--active'
+      return
+    }
+
+    button.disabled = !privacyAcknowledged
+    button.textContent = defaultButtonText
+    button.setAttribute('aria-label', 'Start virtual try-on camera')
+    purchaseButton.className = 'wearon-widget__purchase'
+  }
+
+  const updateCreditBalanceText = (access) => {
+    if (billingMode !== 'resell_mode') {
+      creditBalanceText.textContent = ''
+      return
+    }
+
+    if (requireLogin) {
+      creditBalanceText.textContent = access?.retailCreditPriceLabel
+        ? `Sign in to use credits. ${access.retailCreditPriceLabel}`
+        : 'Sign in to use credits.'
+      return
+    }
+
+    creditBalanceText.textContent = `You have ${shopperBalance} credits remaining.`
+    if (shopperBalance <= 0 && access?.retailCreditPriceLabel) {
+      creditBalanceText.textContent = `You have 0 credits. ${access.retailCreditPriceLabel}`
+    }
+  }
+
+  const setLoading = (isLoading) => {
+    if (isLoading) {
+      button.disabled = true
+      button.textContent = options.loadingText || DEFAULT_LOADING_TEXT
+      setLiveStatus('Opening camera.')
+      return
+    }
+
+    setTryOnButtonState()
   }
 
   const showCameraUI = () => {
     cameraView.className = 'wearon-widget__camera wearon-widget__camera--active'
     overlay.className = 'wearon-widget__pose-overlay wearon-widget__pose-overlay--active'
     captureButton.className = 'wearon-widget__capture wearon-widget__capture--active'
+  }
+
+  const getPoseGuidanceCue = () => {
+    const hint = getPoseHint()
+    if (hint === 'left' || hint === 'right' || hint === 'center') {
+      return POSE_DIRECTION_CUES[hint]
+    }
+    return DEFAULT_AUDIO_CUE
   }
 
   const hideCameraUI = () => {
@@ -288,13 +405,84 @@ export function createTryOnWidget(hostElement, options = {}) {
   }
 
   const acknowledgePrivacy = () => {
-    button.disabled = false
+    persistPrivacyAcknowledgment(sessionStorageRef)
+    privacyAcknowledged = true
     privacyButton.disabled = true
     privacyButton.textContent = 'Acknowledged'
+    setTryOnButtonState()
     setLiveStatus('Privacy notice acknowledged. You can now open the camera.')
   }
 
   privacyButton.addEventListener('click', acknowledgePrivacy)
+
+  if (privacyAcknowledged) {
+    privacyButton.disabled = true
+    privacyButton.textContent = 'Acknowledged'
+  }
+
+  const refreshShopperBalance = async () => {
+    if (!apiClient || billingMode !== 'resell_mode') {
+      return
+    }
+
+    const shopperCredits = await getShopperCreditBalanceFn(
+      apiClient,
+      options.shopperBalanceEndpoint || DEFAULT_SHOPPER_BALANCE_ENDPOINT,
+    )
+    requireLogin = false
+    shopperBalance = Number(shopperCredits.balance || 0)
+    updateCreditBalanceText(currentAccess)
+    setTryOnButtonState()
+  }
+
+  const applyAccess = (access) => {
+    currentAccess = access || null
+    requireLogin = Boolean(access?.requireLogin)
+    billingMode = access?.billingMode === 'resell_mode' ? 'resell_mode' : 'absorb_mode'
+
+    if (requireLogin) {
+      if (access?.retailCreditPriceLabel) {
+        setLiveStatus(`Sign in required before try-on. ${access.retailCreditPriceLabel}`)
+      } else {
+        setLiveStatus('Sign in required before try-on.')
+      }
+    } else if (access?.billingMode === 'absorb_mode') {
+      setLiveStatus('Try-on ready with zero-friction access.')
+    } else if (access?.billingMode === 'resell_mode') {
+      setLiveStatus('Checking shopper credit balance.')
+    }
+
+    updateCreditBalanceText(access)
+    setTryOnButtonState()
+  }
+
+  const initializeAccessMode = async () => {
+    if (!apiClient) {
+      setTryOnButtonState()
+      return
+    }
+
+    try {
+      const access = await resolveTryOnAccessFn(apiClient, options.configEndpoint)
+      applyAccess(access)
+      if (access?.billingMode === 'resell_mode') {
+        try {
+          await refreshShopperBalance()
+          setLiveStatus('Shopper credits loaded.')
+        } catch {
+          requireLogin = true
+          updateCreditBalanceText(access)
+          setTryOnButtonState()
+          setLiveStatus('Sign in required before try-on.')
+        }
+      }
+    } catch {
+      requireLogin = false
+      setTryOnButtonState()
+    }
+  }
+
+  void initializeAccessMode()
 
   audioToggleButton.addEventListener('click', () => {
     audioGuidanceEnabled = !audioGuidanceEnabled
@@ -312,12 +500,21 @@ export function createTryOnWidget(hostElement, options = {}) {
     showCameraUI()
     setLiveStatus('Camera ready. Align yourself inside the guide.')
     if (audioGuidanceEnabled) {
-      speakGuidance(DEFAULT_AUDIO_CUE)
+      speakGuidance(getPoseGuidanceCue())
     }
     return stream
   }
 
   button.addEventListener('click', async () => {
+    if (requireLogin) {
+      setLiveStatus('Please sign in to your store account to continue.')
+      return
+    }
+    if (!privacyAcknowledged) {
+      setLiveStatus('Please acknowledge privacy notice before opening camera.')
+      return
+    }
+
     setLoading(true)
     try {
       await startCamera()
@@ -329,12 +526,53 @@ export function createTryOnWidget(hostElement, options = {}) {
     }, options.loadingDelayMs || DEFAULT_LOADING_DELAY_MS)
   })
 
+  purchaseButton.addEventListener('click', async () => {
+    const cartLink = buildCreditCartLink({
+      shopDomain: currentAccess?.shopDomain,
+      shopifyVariantId: currentAccess?.shopifyVariantId,
+      quantity: 1,
+    })
+
+    if (!cartLink) {
+      setLiveStatus('Unable to start checkout. Store credit product is not configured.')
+      return
+    }
+
+    const opened = openCreditCheckoutFn(cartLink, options.windowRef)
+    if (!opened) {
+      setLiveStatus('Unable to open checkout. Please allow popups and try again.')
+      return
+    }
+
+    setLiveStatus('Checkout opened. Checking for updated credits.')
+
+    try {
+      const latestBalance = await pollShopperCreditBalanceFn(apiClient, {
+        endpoint: options.shopperBalanceEndpoint || DEFAULT_SHOPPER_BALANCE_ENDPOINT,
+        intervalMs: 5000,
+        timeoutMs: 60000,
+      })
+
+      shopperBalance = Number(latestBalance.balance || 0)
+      updateCreditBalanceText(currentAccess)
+      setTryOnButtonState()
+
+      if (shopperBalance > 0) {
+        setLiveStatus('Credits updated. You can now continue with try-on.')
+      } else {
+        setLiveStatus('Still waiting for credits. Please refresh shortly.')
+      }
+    } catch {
+      setLiveStatus('Unable to refresh credits right now. Please try again.')
+    }
+  })
+
   captureButton.addEventListener('click', () => {
     const canvasElement = options.canvasRef || doc.createElement('canvas')
     latestCapturedPhoto = captureFrameFn(cameraView, canvasElement)
-    setLiveStatus('Photo captured.')
+    setLiveStatus('Photo captured. Generation request submitted.')
     if (audioGuidanceEnabled) {
-      speakGuidance('Photo captured.')
+      speakGuidance('Photo captured. Generation in progress.')
     }
     if (typeof options.onCapture === 'function') {
       options.onCapture(latestCapturedPhoto)
@@ -355,6 +593,8 @@ export function createTryOnWidget(hostElement, options = {}) {
   container.appendChild(privacyButton)
   container.appendChild(audioToggleButton)
   container.appendChild(button)
+  container.appendChild(creditBalanceText)
+  container.appendChild(purchaseButton)
   container.appendChild(cameraView)
   container.appendChild(overlay)
   container.appendChild(captureButton)
@@ -362,6 +602,13 @@ export function createTryOnWidget(hostElement, options = {}) {
   container.appendChild(liveRegion)
   shadowRoot.appendChild(style)
   shadowRoot.appendChild(container)
+
+  const announceGenerationStatus = (statusMessage) => {
+    if (!statusMessage || typeof statusMessage !== 'string') {
+      return
+    }
+    setLiveStatus(`Generation ${statusMessage}.`)
+  }
 
   return {
     shadowRoot,
@@ -372,6 +619,8 @@ export function createTryOnWidget(hostElement, options = {}) {
     privacyText,
     privacyButton,
     audioToggleButton,
+    creditBalanceText,
+    purchaseButton,
     liveRegion,
     cameraView,
     overlay,
@@ -380,8 +629,15 @@ export function createTryOnWidget(hostElement, options = {}) {
     setLiveStatus,
     acknowledgePrivacy,
     startCamera,
+    announceGenerationStatus,
     getLastCapture() {
       return latestCapturedPhoto
+    },
+    isPrivacyAcknowledged() {
+      return privacyAcknowledged
+    },
+    requiresLogin() {
+      return requireLogin
     },
   }
 }

@@ -1,5 +1,6 @@
 const PRIVACY_ACK_KEY = 'wearon_privacy_ack_v1'
 const DEFAULT_CONFIG_ENDPOINT = '/api/store-config'
+const DEFAULT_SHOPPER_BALANCE_ENDPOINT = '/api/shopper-credits/balance'
 
 function getSessionStorage(storageRef) {
   if (storageRef) {
@@ -120,6 +121,61 @@ export async function resolveTryOnAccess(apiClient, endpoint = DEFAULT_CONFIG_EN
     requireLogin: shouldRequireLogin({ billingMode: config.billingMode }),
     retailCreditPriceLabel: getRetailCreditPriceLabel(config),
   }
+}
+
+export async function getShopperCreditBalance(
+  apiClient,
+  endpoint = DEFAULT_SHOPPER_BALANCE_ENDPOINT,
+) {
+  if (!apiClient || typeof apiClient.get !== 'function') {
+    throw new Error('API client with a get() method is required')
+  }
+
+  const response = await apiClient.get(endpoint)
+  const payload = response && response.data ? response.data : {}
+  const data = payload && payload.data ? payload.data : payload
+
+  return {
+    balance: Number(data.balance || 0),
+    totalPurchased: Number(data.total_purchased || data.totalPurchased || 0),
+    totalSpent: Number(data.total_spent || data.totalSpent || 0),
+  }
+}
+
+export async function pollShopperCreditBalance(apiClient, options = {}) {
+  const intervalMs = Number.isFinite(options.intervalMs) ? Number(options.intervalMs) : 5000
+  const timeoutMs = Number.isFinite(options.timeoutMs) ? Number(options.timeoutMs) : 60000
+  const endpoint =
+    typeof options.endpoint === 'string' && options.endpoint
+      ? options.endpoint
+      : DEFAULT_SHOPPER_BALANCE_ENDPOINT
+  const waitFn =
+    typeof options.waitFn === 'function'
+      ? options.waitFn
+      : (delayMs) =>
+          new Promise((resolve) => {
+            setTimeout(resolve, delayMs)
+          })
+
+  const attempts = Math.max(1, Math.floor(timeoutMs / intervalMs) + 1)
+  let latestBalance = {
+    balance: 0,
+    totalPurchased: 0,
+    totalSpent: 0,
+  }
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    latestBalance = await getShopperCreditBalance(apiClient, endpoint)
+    if (latestBalance.balance > 0) {
+      return latestBalance
+    }
+
+    if (attempt < attempts - 1) {
+      await waitFn(intervalMs)
+    }
+  }
+
+  return latestBalance
 }
 
 export function buildCreditCartLink({ quantity = 1, shopDomain, shopifyVariantId }) {
