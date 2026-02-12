@@ -1,0 +1,8 @@
+{
+  "name": "wearon-shopify",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node ../node_modules/vitest/vitest.mjs run"
+  }
+}

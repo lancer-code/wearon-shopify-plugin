@@ -1,0 +1,148 @@
+import { gzipSync } from 'node:zlib'
+import { readFileSync } from 'node:fs'
+import { describe, expect, test } from 'vitest'
+import { createTryOnWidget, initTryOnWidgets } from '../extensions/wearon-tryon/assets/tryon-widget.js'
+
+class FakeElement {
+  constructor(tagName) {
+    this.tagName = tagName
+    this.children = []
+    this.className = ''
+    this.textContent = ''
+    this.disabled = false
+    this.type = ''
+    this.attributes = {}
+    this.listeners = {}
+    this.firstChild = null
+  }
+
+  setAttribute(name, value) {
+    this.attributes[name] = value
+  }
+
+  appendChild(child) {
+    this.children.push(child)
+    this.firstChild = this.children[0] || null
+    return child
+  }
+
+  removeChild(child) {
+    this.children = this.children.filter((item) => item !== child)
+    this.firstChild = this.children[0] || null
+    return child
+  }
+
+  addEventListener(name, callback) {
+    this.listeners[name] = callback
+  }
+
+  click() {
+    if (this.listeners.click) {
+      this.listeners.click()
+    }
+  }
+}
+
+function createFakeDocument() {
+  return {
+    createElement(tagName) {
+      return new FakeElement(tagName)
+    },
+  }
+}
+
+function createHostElement() {
+  return {
+    shadowRoot: null,
+    attachShadow() {
+      this.shadowRoot = new FakeElement('shadow-root')
+      return this.shadowRoot
+    },
+  }
+}
+
+function findText(node, targetText) {
+  if (!node) {
+    return false
+  }
+
+  if (node.textContent === targetText) {
+    return true
+  }
+
+  if (!node.children || node.children.length === 0) {
+    return false
+  }
+
+  return node.children.some((child) => findText(child, targetText))
+}
+
+describe('tryon widget', () => {
+  test('renders inside shadow DOM', () => {
+    const hostElement = createHostElement()
+    const documentRef = createFakeDocument()
+
+    const widget = createTryOnWidget(hostElement, { documentRef })
+
+    expect(widget.shadowRoot).toBeTruthy()
+    expect(widget.shadowRoot.children).toHaveLength(2)
+  })
+
+  test('shows powered by badge and button loading state', () => {
+    const hostElement = createHostElement()
+    const documentRef = createFakeDocument()
+    let scheduledCallback = null
+
+    const widget = createTryOnWidget(hostElement, {
+      documentRef,
+      schedule(callback) {
+        scheduledCallback = callback
+      },
+    })
+
+    expect(findText(widget.shadowRoot, 'Powered by WearOn')).toBe(true)
+    expect(widget.button.textContent).toBe('Try On')
+
+    widget.button.click()
+    expect(widget.button.textContent).toBe('Loading...')
+
+    if (scheduledCallback) {
+      scheduledCallback()
+    }
+
+    expect(widget.button.textContent).toBe('Try On')
+  })
+
+  test('initializes all data-wearon-tryon hosts', () => {
+    const hostOne = createHostElement()
+    const hostTwo = createHostElement()
+    const root = {
+      querySelectorAll() {
+        return [hostOne, hostTwo]
+      },
+    }
+    const documentRef = createFakeDocument()
+
+    const count = initTryOnWidgets(root, { documentRef })
+
+    expect(count).toBe(2)
+    expect(hostOne.shadowRoot).toBeTruthy()
+    expect(hostTwo.shadowRoot).toBeTruthy()
+  })
+
+  test('bundle is below 50KB gzipped', () => {
+    const bundle = readFileSync('extensions/wearon-tryon/assets/tryon-widget.js', 'utf8')
+    const size = gzipSync(bundle).byteLength
+
+    expect(size).toBeLessThan(50 * 1024)
+  })
+
+  test('bundle transfer estimate stays below 2s on constrained 3G', () => {
+    const bundle = readFileSync('extensions/wearon-tryon/assets/tryon-widget.js', 'utf8')
+    const gzippedBytes = gzipSync(bundle).byteLength
+    const constrained3GBitsPerSecond = 400 * 1024
+    const estimatedSeconds = (gzippedBytes * 8) / constrained3GBitsPerSecond
+
+    expect(estimatedSeconds).toBeLessThan(2)
+  })
+})

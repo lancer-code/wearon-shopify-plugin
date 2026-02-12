@@ -1,0 +1,16 @@
+{% if request.page_type == 'product' %}
+  <div
+    data-wearon-tryon
+    data-product-id="{{ product.id }}"
+    data-product-handle="{{ product.handle }}"
+  ></div>
+  <script src="{{ 'tryon-widget.js' | asset_url }}" defer></script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "WearOn Try-On",
+  "target": "section",
+  "settings": []
+}
+{% endschema %}
