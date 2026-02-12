@@ -15,10 +15,56 @@ function getSessionStorage(storageRef) {
 
 function normalizeBillingMode(input) {
   if (!input || typeof input !== 'string') {
-    return 'resell'
+    return 'resell_mode'
   }
 
-  return input.toLowerCase() === 'absorb' ? 'absorb' : 'resell'
+  const normalized = input.toLowerCase()
+  if (normalized === 'absorb' || normalized === 'absorb_mode') {
+    return 'absorb_mode'
+  }
+
+  return 'resell_mode'
+}
+
+function normalizeRetailCreditPrice(input) {
+  const parsed = typeof input === 'number' ? input : Number(input)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null
+  }
+
+  return parsed
+}
+
+function normalizeShopDomain(input) {
+  if (typeof input !== 'string') {
+    return null
+  }
+
+  const trimmed = input.trim()
+  if (!trimmed) {
+    return null
+  }
+
+  const withoutProtocol = trimmed.replace(/^https?:\/\//i, '')
+  return withoutProtocol.replace(/\/+$/, '')
+}
+
+export function getRetailCreditPriceLabel({ billingMode, retailCreditPrice, currency = 'USD' }) {
+  if (normalizeBillingMode(billingMode) !== 'resell_mode') {
+    return null
+  }
+
+  const normalizedPrice = normalizeRetailCreditPrice(retailCreditPrice)
+  if (normalizedPrice === null) {
+    return null
+  }
+
+  return `${new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(normalizedPrice)} per credit`
 }
 
 export function isAcknowledged(storageRef) {
@@ -41,7 +87,7 @@ export function acknowledgePrivacy(storageRef) {
 }
 
 export function shouldRequireLogin({ billingMode }) {
-  return normalizeBillingMode(billingMode) !== 'absorb'
+  return normalizeBillingMode(billingMode) !== 'absorb_mode'
 }
 
 export async function getStoreConfig(apiClient, endpoint = DEFAULT_CONFIG_ENDPOINT) {
@@ -55,6 +101,11 @@ export async function getStoreConfig(apiClient, endpoint = DEFAULT_CONFIG_ENDPOI
 
   return {
     billingMode: normalizeBillingMode(data.billing_mode || data.billingMode),
+    retailCreditPrice: normalizeRetailCreditPrice(
+      data.retail_credit_price || data.retailCreditPrice,
+    ),
+    shopDomain: normalizeShopDomain(data.shop_domain || data.shopDomain),
+    shopifyVariantId: data.shopify_variant_id || data.shopifyVariantId || null,
   }
 }
 
@@ -63,8 +114,38 @@ export async function resolveTryOnAccess(apiClient, endpoint = DEFAULT_CONFIG_EN
 
   return {
     billingMode: config.billingMode,
+    retailCreditPrice: config.retailCreditPrice,
+    shopDomain: config.shopDomain,
+    shopifyVariantId: config.shopifyVariantId,
     requireLogin: shouldRequireLogin({ billingMode: config.billingMode }),
+    retailCreditPriceLabel: getRetailCreditPriceLabel(config),
   }
+}
+
+export function buildCreditCartLink({ quantity = 1, shopDomain, shopifyVariantId }) {
+  const normalizedShopDomain = normalizeShopDomain(shopDomain)
+  const normalizedVariantId =
+    typeof shopifyVariantId === 'string' && /^\d+$/.test(shopifyVariantId.trim())
+      ? shopifyVariantId.trim()
+      : null
+  const normalizedQuantity = Number.isInteger(quantity) && quantity > 0 ? quantity : 1
+
+  if (!normalizedShopDomain || !normalizedVariantId) {
+    return null
+  }
+
+  return `https://${normalizedShopDomain}/cart/${normalizedVariantId}:${normalizedQuantity}`
+}
+
+export function openCreditCheckout(cartLink, windowRef) {
+  const targetWindow = windowRef || (typeof globalThis !== 'undefined' ? globalThis.window : undefined)
+
+  if (!targetWindow || typeof targetWindow.open !== 'function' || typeof cartLink !== 'string') {
+    return false
+  }
+
+  targetWindow.open(cartLink, '_blank', 'noopener,noreferrer')
+  return true
 }
 
 export async function getUserCamera(mediaDevicesRef) {

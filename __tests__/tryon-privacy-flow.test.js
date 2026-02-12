@@ -1,12 +1,15 @@
 import { describe, expect, test } from 'vitest'
 import {
   acknowledgePrivacy,
+  buildCreditCartLink,
   capturePhoto,
   createTryOnExperienceState,
   createPoseOverlay,
   getStoreConfig,
+  getRetailCreditPriceLabel,
   getUserCamera,
   isAcknowledged,
+  openCreditCheckout,
   resolveTryOnAccess,
   shouldRequireLogin,
 } from '../extensions/wearon-tryon/assets/tryon-privacy-flow.js'
@@ -97,22 +100,74 @@ describe('tryon privacy flow', () => {
   })
 
   test('absorb mode skips login requirement', () => {
-    expect(shouldRequireLogin({ billingMode: 'absorb' })).toBe(false)
-    expect(shouldRequireLogin({ billingMode: 'resell' })).toBe(true)
+    expect(shouldRequireLogin({ billingMode: 'absorb_mode' })).toBe(false)
+    expect(shouldRequireLogin({ billingMode: 'resell_mode' })).toBe(true)
   })
 
-  test('reads billing_mode from API config endpoint and resolves access mode', async () => {
+  test('reads billing_mode and retail_credit_price from API config endpoint', async () => {
     const apiClient = {
       get() {
-        return Promise.resolve({ data: { data: { billing_mode: 'absorb' } } })
+        return Promise.resolve({
+          data: {
+            data: {
+              billing_mode: 'resell_mode',
+              retail_credit_price: 0.5,
+              shop_domain: 'store.myshopify.com',
+              shopify_variant_id: '123456789',
+            },
+          },
+        })
       },
     }
 
     const config = await getStoreConfig(apiClient)
     const access = await resolveTryOnAccess(apiClient)
 
-    expect(config.billingMode).toBe('absorb')
-    expect(access.billingMode).toBe('absorb')
-    expect(access.requireLogin).toBe(false)
+    expect(config.billingMode).toBe('resell_mode')
+    expect(config.retailCreditPrice).toBe(0.5)
+    expect(access.billingMode).toBe('resell_mode')
+    expect(access.retailCreditPrice).toBe(0.5)
+    expect(access.shopDomain).toBe('store.myshopify.com')
+    expect(access.shopifyVariantId).toBe('123456789')
+    expect(access.requireLogin).toBe(true)
+    expect(access.retailCreditPriceLabel).toBe('$0.50 per credit')
+  })
+
+  test('builds direct cart link from shop domain and variant id', () => {
+    expect(
+      buildCreditCartLink({
+        shopDomain: 'https://store.myshopify.com/',
+        shopifyVariantId: '987654321',
+        quantity: 3,
+      }),
+    ).toBe('https://store.myshopify.com/cart/987654321:3')
+  })
+
+  test('opens Shopify checkout cart link in a new tab', () => {
+    const opened = []
+    const didOpen = openCreditCheckout('https://store.myshopify.com/cart/123:1', {
+      open(...args) {
+        opened.push(args)
+      },
+    })
+
+    expect(didOpen).toBe(true)
+    expect(opened).toEqual([['https://store.myshopify.com/cart/123:1', '_blank', 'noopener,noreferrer']])
+  })
+
+  test('builds shopper-friendly retail price label for resell mode', () => {
+    expect(
+      getRetailCreditPriceLabel({
+        billingMode: 'resell_mode',
+        retailCreditPrice: 1.25,
+      }),
+    ).toBe('$1.25 per credit')
+
+    expect(
+      getRetailCreditPriceLabel({
+        billingMode: 'absorb_mode',
+        retailCreditPrice: 1.25,
+      }),
+    ).toBeNull()
   })
 })
