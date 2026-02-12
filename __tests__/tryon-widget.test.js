@@ -9,6 +9,9 @@ class FakeElement {
     this.children = []
     this.className = ''
     this.textContent = ''
+    this.srcObject = null
+    this.videoWidth = 640
+    this.videoHeight = 480
     this.disabled = false
     this.type = ''
     this.attributes = {}
@@ -38,8 +41,9 @@ class FakeElement {
 
   click() {
     if (this.listeners.click) {
-      this.listeners.click()
+      return this.listeners.click()
     }
+    return undefined
   }
 }
 
@@ -88,23 +92,44 @@ describe('tryon widget', () => {
     expect(widget.shadowRoot.children).toHaveLength(2)
   })
 
-  test('shows powered by badge and button loading state', () => {
+  test('shows privacy gate, opens camera with overlay, and captures photo', async () => {
     const hostElement = createHostElement()
     const documentRef = createFakeDocument()
     let scheduledCallback = null
+    let capturedPhoto = null
 
     const widget = createTryOnWidget(hostElement, {
       documentRef,
+      getUserCameraFn() {
+        return Promise.resolve({ id: 'stream-1' })
+      },
+      captureFrameFn() {
+        return 'data:image/jpeg;base64,captured'
+      },
+      onCapture(photoData) {
+        capturedPhoto = photoData
+      },
       schedule(callback) {
         scheduledCallback = callback
       },
     })
 
     expect(findText(widget.shadowRoot, 'Powered by WearOn')).toBe(true)
+    expect(findText(widget.shadowRoot, 'Your photo is deleted within 6 hours')).toBe(true)
     expect(widget.button.textContent).toBe('Try On')
+    expect(widget.button.disabled).toBe(true)
 
-    widget.button.click()
+    widget.privacyButton.click()
+    expect(widget.button.disabled).toBe(false)
+
+    await widget.button.click()
     expect(widget.button.textContent).toBe('Loading...')
+    expect(widget.cameraView.srcObject).toEqual({ id: 'stream-1' })
+    expect(widget.overlay.className).toContain('wearon-widget__pose-overlay--active')
+    expect(widget.captureButton.className).toContain('wearon-widget__capture--active')
+
+    widget.captureButton.click()
+    expect(capturedPhoto).toBe('data:image/jpeg;base64,captured')
 
     if (scheduledCallback) {
       scheduledCallback()
