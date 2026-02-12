@@ -1,7 +1,15 @@
 import { gzipSync } from 'node:zlib'
 import { readFileSync } from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import { createTryOnWidget, initTryOnWidgets } from '../extensions/wearon-tryon/assets/tryon-widget.js'
+
+const currentDir = path.dirname(fileURLToPath(import.meta.url))
+const widgetBundlePath = path.resolve(
+  currentDir,
+  '../extensions/wearon-tryon/assets/tryon-widget.js',
+)
 
 class FakeElement {
   constructor(tagName) {
@@ -156,14 +164,14 @@ describe('tryon widget', () => {
   })
 
   test('bundle is below 50KB gzipped', () => {
-    const bundle = readFileSync('extensions/wearon-tryon/assets/tryon-widget.js', 'utf8')
+    const bundle = readFileSync(widgetBundlePath, 'utf8')
     const size = gzipSync(bundle).byteLength
 
     expect(size).toBeLessThan(50 * 1024)
   })
 
   test('bundle transfer estimate stays below 2s on constrained 3G', () => {
-    const bundle = readFileSync('extensions/wearon-tryon/assets/tryon-widget.js', 'utf8')
+    const bundle = readFileSync(widgetBundlePath, 'utf8')
     const gzippedBytes = gzipSync(bundle).byteLength
     const constrained3GBitsPerSecond = 400 * 1024
     const estimatedSeconds = (gzippedBytes * 8) / constrained3GBitsPerSecond
