@@ -4,6 +4,7 @@ const DEFAULT_BUTTON_TEXT = 'Try On'
 const DEFAULT_LOADING_TEXT = 'Loading...'
 const DEFAULT_LOADING_DELAY_MS = 700
 const PRIVACY_MESSAGE = 'Your photo is deleted within 6 hours'
+const DEFAULT_AUDIO_CUE = 'Center yourself.'
 
 function clearChildren(node) {
   if (!node || typeof node.firstChild === 'undefined' || typeof node.removeChild !== 'function') {
@@ -38,6 +39,18 @@ export function createTryOnWidget(hostElement, options = {}) {
   const schedule = options.schedule || ((callback, delay) => globalThis.setTimeout(callback, delay))
   const getUserCameraFn = options.getUserCameraFn || getUserCamera
   const captureFrameFn = options.captureFrameFn || capturePhoto
+  const speakGuidance =
+    options.speakGuidance ||
+    ((message) => {
+      if (
+        typeof globalThis !== 'undefined' &&
+        globalThis.speechSynthesis &&
+        typeof globalThis.speechSynthesis.speak === 'function' &&
+        typeof globalThis.SpeechSynthesisUtterance === 'function'
+      ) {
+        globalThis.speechSynthesis.speak(new globalThis.SpeechSynthesisUtterance(message))
+      }
+    })
 
   clearChildren(shadowRoot)
 
@@ -63,6 +76,8 @@ export function createTryOnWidget(hostElement, options = {}) {
       color: #ffffff;
       font-size: 14px;
       font-weight: 600;
+      min-height: 44px;
+      min-width: 44px;
       padding: 10px 14px;
       cursor: pointer;
       transition: opacity 120ms ease-in-out;
@@ -80,6 +95,8 @@ export function createTryOnWidget(hostElement, options = {}) {
       color: #101828;
       font-size: 13px;
       font-weight: 600;
+      min-height: 44px;
+      min-width: 44px;
       padding: 8px 12px;
       cursor: pointer;
     }
@@ -128,17 +145,60 @@ export function createTryOnWidget(hostElement, options = {}) {
       color: #ffffff;
       font-size: 14px;
       font-weight: 600;
+      min-height: 44px;
+      min-width: 44px;
       padding: 10px 14px;
       cursor: pointer;
     }
     .wearon-widget__capture--active {
       display: block;
     }
+    .wearon-widget__audio-toggle {
+      border: 1px solid #344054;
+      border-radius: 10px;
+      background: #ffffff;
+      color: #101828;
+      font-size: 13px;
+      font-weight: 600;
+      min-height: 44px;
+      min-width: 44px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    .wearon-widget__visually-hidden {
+      border: 0;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      padding: 0;
+      position: absolute;
+      width: 1px;
+      white-space: nowrap;
+    }
+    .wearon-widget button:focus-visible {
+      outline: 3px solid #0069ff;
+      outline-offset: 2px;
+    }
+    @media (forced-colors: active) {
+      .wearon-widget {
+        border: 1px solid CanvasText;
+      }
+      .wearon-widget button {
+        forced-color-adjust: none;
+        border: 1px solid CanvasText;
+        color: CanvasText;
+        background: Canvas;
+      }
+    }
   `
 
   const container = doc.createElement('section')
   container.className = 'wearon-widget'
   container.setAttribute('data-widget', 'wearon-tryon')
+  container.setAttribute('role', 'region')
+  container.setAttribute('aria-label', 'WearOn virtual try-on widget')
 
   const privacyText = doc.createElement('p')
   privacyText.className = 'wearon-widget__privacy'
@@ -148,12 +208,14 @@ export function createTryOnWidget(hostElement, options = {}) {
   privacyButton.type = 'button'
   privacyButton.className = 'wearon-widget__privacy-ack'
   privacyButton.textContent = 'I Understand'
+  privacyButton.setAttribute('aria-label', 'Acknowledge privacy notice')
 
   const button = doc.createElement('button')
   button.type = 'button'
   button.className = 'wearon-widget__button'
   button.textContent = options.buttonText || DEFAULT_BUTTON_TEXT
   button.disabled = true
+  button.setAttribute('aria-label', 'Start virtual try-on camera')
 
   const badge = doc.createElement('footer')
   badge.className = 'wearon-widget__badge'
@@ -163,20 +225,45 @@ export function createTryOnWidget(hostElement, options = {}) {
   cameraView.className = 'wearon-widget__camera'
   cameraView.setAttribute('autoplay', '')
   cameraView.setAttribute('playsinline', '')
+  cameraView.setAttribute('aria-label', 'Live camera preview')
 
   const overlay = createPoseOverlay(doc)
+  overlay.setAttribute('aria-label', 'Pose guidance overlay')
   const captureButton = doc.createElement('button')
   captureButton.type = 'button'
   captureButton.className = 'wearon-widget__capture'
   captureButton.textContent = 'Capture Photo'
+  captureButton.setAttribute('aria-label', 'Capture photo')
 
   let latestCapturedPhoto = null
+  let activeStream = null
+  let audioGuidanceEnabled = false
+
+  const liveRegion = doc.createElement('div')
+  liveRegion.className = 'wearon-widget__visually-hidden'
+  liveRegion.setAttribute('role', 'status')
+  liveRegion.setAttribute('aria-live', 'polite')
+  liveRegion.setAttribute('aria-atomic', 'true')
+
+  const audioToggleButton = doc.createElement('button')
+  audioToggleButton.type = 'button'
+  audioToggleButton.className = 'wearon-widget__audio-toggle'
+  audioToggleButton.textContent = 'Enable Audio Guidance'
+  audioToggleButton.setAttribute('aria-label', 'Toggle audio guidance')
+  audioToggleButton.setAttribute('aria-pressed', 'false')
+
+  const setLiveStatus = (message) => {
+    liveRegion.textContent = message
+  }
 
   const setLoading = (isLoading) => {
     button.disabled = Boolean(isLoading)
     button.textContent = isLoading
       ? options.loadingText || DEFAULT_LOADING_TEXT
       : options.buttonText || DEFAULT_BUTTON_TEXT
+    if (isLoading) {
+      setLiveStatus('Opening camera.')
+    }
   }
 
   const showCameraUI = () => {
@@ -189,20 +276,44 @@ export function createTryOnWidget(hostElement, options = {}) {
     cameraView.className = 'wearon-widget__camera'
     overlay.className = 'wearon-widget__pose-overlay'
     captureButton.className = 'wearon-widget__capture'
+    if (activeStream && typeof activeStream.getTracks === 'function') {
+      activeStream.getTracks().forEach((track) => {
+        if (track && typeof track.stop === 'function') {
+          track.stop()
+        }
+      })
+    }
+    activeStream = null
+    setLiveStatus('Camera closed.')
   }
 
   const acknowledgePrivacy = () => {
     button.disabled = false
     privacyButton.disabled = true
     privacyButton.textContent = 'Acknowledged'
+    setLiveStatus('Privacy notice acknowledged. You can now open the camera.')
   }
 
   privacyButton.addEventListener('click', acknowledgePrivacy)
 
+  audioToggleButton.addEventListener('click', () => {
+    audioGuidanceEnabled = !audioGuidanceEnabled
+    audioToggleButton.setAttribute('aria-pressed', audioGuidanceEnabled ? 'true' : 'false')
+    audioToggleButton.textContent = audioGuidanceEnabled
+      ? 'Disable Audio Guidance'
+      : 'Enable Audio Guidance'
+    setLiveStatus(audioGuidanceEnabled ? 'Audio guidance enabled.' : 'Audio guidance disabled.')
+  })
+
   const startCamera = async () => {
     const stream = await getUserCameraFn(options.mediaDevicesRef)
+    activeStream = stream
     cameraView.srcObject = stream
     showCameraUI()
+    setLiveStatus('Camera ready. Align yourself inside the guide.')
+    if (audioGuidanceEnabled) {
+      speakGuidance(DEFAULT_AUDIO_CUE)
+    }
     return stream
   }
 
@@ -221,31 +332,52 @@ export function createTryOnWidget(hostElement, options = {}) {
   captureButton.addEventListener('click', () => {
     const canvasElement = options.canvasRef || doc.createElement('canvas')
     latestCapturedPhoto = captureFrameFn(cameraView, canvasElement)
+    setLiveStatus('Photo captured.')
+    if (audioGuidanceEnabled) {
+      speakGuidance('Photo captured.')
+    }
     if (typeof options.onCapture === 'function') {
       options.onCapture(latestCapturedPhoto)
     }
   })
 
+  container.addEventListener('keydown', (event) => {
+    if (!event || event.key !== 'Escape') {
+      return
+    }
+    if (typeof event.preventDefault === 'function') {
+      event.preventDefault()
+    }
+    hideCameraUI()
+  })
+
   container.appendChild(privacyText)
   container.appendChild(privacyButton)
+  container.appendChild(audioToggleButton)
   container.appendChild(button)
   container.appendChild(cameraView)
   container.appendChild(overlay)
   container.appendChild(captureButton)
   container.appendChild(badge)
+  container.appendChild(liveRegion)
   shadowRoot.appendChild(style)
   shadowRoot.appendChild(container)
 
   return {
     shadowRoot,
+    container,
+    styleElement: style,
     button,
     badge,
     privacyText,
     privacyButton,
+    audioToggleButton,
+    liveRegion,
     cameraView,
     overlay,
     captureButton,
     setLoading,
+    setLiveStatus,
     acknowledgePrivacy,
     startCamera,
     getLastCapture() {
