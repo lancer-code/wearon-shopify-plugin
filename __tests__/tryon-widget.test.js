@@ -240,6 +240,29 @@ describe('tryon widget', () => {
     expect(widget.liveRegion.textContent).toContain('Please sign in to your store account')
   })
 
+  test('fails closed (requires login) when config API errors (MEDIUM #3 / HIGH #1 fix)', async () => {
+    const hostElement = createHostElement()
+    const documentRef = createFakeDocument()
+
+    const widget = createTryOnWidget(hostElement, {
+      documentRef,
+      sessionStorageRef: createSessionStorageMock(),
+      apiClient: { get() {} },
+      resolveTryOnAccessFn() {
+        // Simulate API failure (timeout, 500 error, network down, etc.)
+        return Promise.reject(new Error('API timeout'))
+      },
+    })
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // HIGH #1 FIX VERIFICATION: Should require login on error (fail closed)
+    expect(widget.requiresLogin()).toBe(true)
+    expect(widget.button.textContent).toBe('Sign In to Try On')
+    expect(widget.liveRegion.textContent).toContain('Unable to load try-on configuration')
+  })
+
   test('in resell mode with zero balance, shows purchase flow and enables try-on after polling', async () => {
     const hostElement = createHostElement()
     const documentRef = createFakeDocument()

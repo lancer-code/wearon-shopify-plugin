@@ -69,6 +69,56 @@ function createHostElement() {
   }
 }
 
+function runAutomatedAccessibilityAudit(widget) {
+  const violations = []
+  const styleText = widget.styleElement?.textContent || ''
+  const controls = [
+    { id: 'privacyButton', element: widget.privacyButton },
+    { id: 'audioToggleButton', element: widget.audioToggleButton },
+    { id: 'tryOnButton', element: widget.button },
+    { id: 'captureButton', element: widget.captureButton },
+  ]
+
+  if (widget.container.attributes.role !== 'region') {
+    violations.push('container missing role=region')
+  }
+
+  if (!widget.container.attributes['aria-label']) {
+    violations.push('container missing aria-label')
+  }
+
+  for (const control of controls) {
+    if (!control.element?.attributes?.['aria-label']) {
+      violations.push(`${control.id} missing aria-label`)
+    }
+    if (control.element?.tagName !== 'button') {
+      violations.push(`${control.id} is not a button`)
+    }
+  }
+
+  if (widget.liveRegion.attributes.role !== 'status') {
+    violations.push('live region missing role=status')
+  }
+  if (widget.liveRegion.attributes['aria-live'] !== 'polite') {
+    violations.push('live region missing aria-live=polite')
+  }
+  if (widget.liveRegion.attributes['aria-atomic'] !== 'true') {
+    violations.push('live region missing aria-atomic=true')
+  }
+
+  if (!styleText.includes(':focus-visible')) {
+    violations.push('focus-visible styles missing')
+  }
+  if (!styleText.includes('min-height: 44px') || !styleText.includes('min-width: 44px')) {
+    violations.push('minimum touch target rules missing')
+  }
+  if (!styleText.includes('@media (forced-colors: active)')) {
+    violations.push('forced-colors support missing')
+  }
+
+  return violations
+}
+
 describe('tryon accessibility', () => {
   function toLinear(channel) {
     const value = channel / 255
@@ -96,7 +146,7 @@ describe('tryon accessibility', () => {
     return (lighter + 0.05) / (darker + 0.05)
   }
 
-  test('adds ARIA labels and live-region status updates', async () => {
+  test('runs automated accessibility audit with zero violations', async () => {
     const widget = createTryOnWidget(createHostElement(), {
       documentRef: createFakeDocument(),
       getUserCameraFn() {
@@ -110,14 +160,42 @@ describe('tryon accessibility', () => {
       },
     })
 
-    expect(widget.button.attributes['aria-label']).toBeTruthy()
-    expect(widget.privacyButton.attributes['aria-label']).toBeTruthy()
-    expect(widget.captureButton.attributes['aria-label']).toBeTruthy()
-    expect(widget.liveRegion.attributes['aria-live']).toBe('polite')
+    const violations = runAutomatedAccessibilityAudit(widget)
+    expect(violations).toEqual([])
+  })
 
+  test('announces directional audio cues and generation progress', async () => {
+    const spokenMessages = []
+    const widget = createTryOnWidget(createHostElement(), {
+      documentRef: createFakeDocument(),
+      getPoseHint() {
+        return 'left'
+      },
+      speakGuidance(message) {
+        spokenMessages.push(message)
+      },
+      getUserCameraFn() {
+        return Promise.resolve({ id: 'stream-1' })
+      },
+      captureFrameFn() {
+        return 'data:image/jpeg;base64,ok'
+      },
+      schedule(callback) {
+        callback()
+      },
+    })
+
+    widget.audioToggleButton.click()
     widget.privacyButton.click()
     await widget.button.click()
-    expect(widget.liveRegion.textContent.toLowerCase()).toContain('camera')
+    expect(spokenMessages).toContain('Move left.')
+
+    widget.captureButton.click()
+    expect(spokenMessages).toContain('Photo captured. Generation in progress.')
+    expect(widget.liveRegion.textContent).toContain('Generation request submitted')
+
+    widget.announceGenerationStatus('completed')
+    expect(widget.liveRegion.textContent).toBe('Generation completed.')
   })
 
   test('supports keyboard escape to close overlays', async () => {
@@ -137,6 +215,24 @@ describe('tryon accessibility', () => {
 
     widget.container.keydown('Escape')
     expect(widget.overlay.className).toBe('wearon-widget__pose-overlay')
+  })
+
+  test('keeps logical keyboard traversal order for interactive controls', () => {
+    const widget = createTryOnWidget(createHostElement(), {
+      documentRef: createFakeDocument(),
+    })
+
+    const tabOrder = widget.container.children
+      .filter((element) => element.tagName === 'button')
+      .map((element) => element.className)
+
+    expect(tabOrder).toEqual([
+      'wearon-widget__privacy-ack',
+      'wearon-widget__audio-toggle',
+      'wearon-widget__button',
+      'wearon-widget__purchase',
+      'wearon-widget__capture',
+    ])
   })
 
   test('enforces touch targets, focus indicators, forced-colors, and audio toggle', () => {

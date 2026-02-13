@@ -1,0 +1,19 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "d9d82a5e397f9a821983b4e7ab1c5ec8"
+name = "WearOn Ai"
+application_url = "https://wearonai.com/shopify"
+embedded = true
+
+[webhooks]
+api_version = "2026-01"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_products,write_products,read_orders"
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [
+  "https://wearonai.com/api/v1/auth/shopify/callback"
+]

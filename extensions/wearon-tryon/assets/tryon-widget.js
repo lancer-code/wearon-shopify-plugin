@@ -6,6 +6,8 @@ import {
   getShopperCreditBalance,
   getUserCamera,
   isAcknowledged,
+  isAgeVerified,
+  setAgeVerified as persistAgeVerification,
   openCreditCheckout,
   pollShopperCreditBalance,
   resolveTryOnAccess,
@@ -294,9 +296,39 @@ export function createTryOnWidget(hostElement, options = {}) {
   captureButton.textContent = 'Capture Photo'
   captureButton.setAttribute('aria-label', 'Capture photo')
 
+  // Age gate elements
+  const ageGateContainer = doc.createElement('div')
+  ageGateContainer.className = 'wearon-widget__age-gate'
+
+  const ageGateText = doc.createElement('p')
+  ageGateText.className = 'wearon-widget__privacy'
+  ageGateText.textContent = 'You must be 13 or older to use this feature.'
+
+  const ageConfirmButton = doc.createElement('button')
+  ageConfirmButton.type = 'button'
+  ageConfirmButton.className = 'wearon-widget__privacy-ack'
+  ageConfirmButton.textContent = 'I confirm I am 13 or older'
+  ageConfirmButton.setAttribute('aria-label', 'Confirm you are 13 or older')
+
+  const ageDenyButton = doc.createElement('button')
+  ageDenyButton.type = 'button'
+  ageDenyButton.className = 'wearon-widget__privacy-ack'
+  ageDenyButton.textContent = 'I am under 13'
+  ageDenyButton.setAttribute('aria-label', 'Indicate you are under 13')
+
+  const ageBlockedText = doc.createElement('p')
+  ageBlockedText.className = 'wearon-widget__privacy'
+  ageBlockedText.style.display = 'none'
+  ageBlockedText.textContent = 'This feature is not available for users under 13.'
+
+  ageGateContainer.appendChild(ageGateText)
+  ageGateContainer.appendChild(ageConfirmButton)
+  ageGateContainer.appendChild(ageDenyButton)
+
   let latestCapturedPhoto = null
   let activeStream = null
   let audioGuidanceEnabled = false
+  let ageVerified = isAgeVerified(sessionStorageRef)
   let privacyAcknowledged = isAcknowledged(sessionStorageRef)
   let requireLogin = false
   let billingMode = 'absorb_mode'
@@ -413,6 +445,42 @@ export function createTryOnWidget(hostElement, options = {}) {
     setLiveStatus('Privacy notice acknowledged. You can now open the camera.')
   }
 
+  const updateAgeGateVisibility = () => {
+    if (ageVerified) {
+      ageGateContainer.style.display = 'none'
+      ageBlockedText.style.display = 'none'
+      privacyText.style.display = ''
+      privacyButton.style.display = ''
+    } else {
+      privacyText.style.display = 'none'
+      privacyButton.style.display = 'none'
+      button.disabled = true
+    }
+  }
+
+  ageConfirmButton.addEventListener('click', () => {
+    persistAgeVerification(sessionStorageRef)
+    ageVerified = true
+    ageGateContainer.style.display = 'none'
+    ageBlockedText.style.display = 'none'
+    privacyText.style.display = ''
+    privacyButton.style.display = ''
+    setTryOnButtonState()
+    setLiveStatus('Age verified. Please acknowledge the privacy notice to continue.')
+  })
+
+  ageDenyButton.addEventListener('click', () => {
+    ageGateContainer.style.display = 'none'
+    ageBlockedText.style.display = 'block'
+    privacyText.style.display = 'none'
+    privacyButton.style.display = 'none'
+    button.disabled = true
+    button.style.display = 'none'
+    setLiveStatus('This feature is not available for users under 13.')
+  })
+
+  updateAgeGateVisibility()
+
   privacyButton.addEventListener('click', acknowledgePrivacy)
 
   if (privacyAcknowledged) {
@@ -476,9 +544,13 @@ export function createTryOnWidget(hostElement, options = {}) {
           setLiveStatus('Sign in required before try-on.')
         }
       }
-    } catch {
-      requireLogin = false
+    } catch (err) {
+      // HIGH #1 FIX: Fail CLOSED on config errors (deny access, don't bypass login)
+      // If we can't determine billing mode, assume login required for safety
+      requireLogin = true
+      currentAccess = { requireLogin: true, billingMode: null }
       setTryOnButtonState()
+      setLiveStatus('Unable to load try-on configuration. Please refresh the page.')
     }
   }
 
@@ -589,6 +661,8 @@ export function createTryOnWidget(hostElement, options = {}) {
     hideCameraUI()
   })
 
+  container.appendChild(ageGateContainer)
+  container.appendChild(ageBlockedText)
   container.appendChild(privacyText)
   container.appendChild(privacyButton)
   container.appendChild(audioToggleButton)
@@ -632,6 +706,13 @@ export function createTryOnWidget(hostElement, options = {}) {
     announceGenerationStatus,
     getLastCapture() {
       return latestCapturedPhoto
+    },
+    ageGateContainer,
+    ageConfirmButton,
+    ageDenyButton,
+    ageBlockedText,
+    isAgeVerified() {
+      return ageVerified
     },
     isPrivacyAcknowledged() {
       return privacyAcknowledged

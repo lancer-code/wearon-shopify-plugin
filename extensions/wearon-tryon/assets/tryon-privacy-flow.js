@@ -1,3 +1,7 @@
+const AGE_VERIFIED_KEY = 'wearon_age_verified_v1'
+// MEDIUM #2 FIX: Add timestamp validation to prevent stale/tampered verification
+const AGE_VERIFIED_TIMESTAMP_KEY = 'wearon_age_verified_ts_v1'
+const MAX_AGE_VERIFICATION_DURATION_MS = 24 * 60 * 60 * 1000 // 24 hours
 const PRIVACY_ACK_KEY = 'wearon_privacy_ack_v1'
 const DEFAULT_CONFIG_ENDPOINT = '/api/store-config'
 const DEFAULT_SHOPPER_BALANCE_ENDPOINT = '/api/shopper-credits/balance'
@@ -84,6 +88,57 @@ export function acknowledgePrivacy(storageRef) {
   }
 
   storage.setItem(PRIVACY_ACK_KEY, 'true')
+  return true
+}
+
+export function isAgeVerified(storageRef) {
+  const storage = getSessionStorage(storageRef)
+  if (!storage) {
+    return false
+  }
+
+  const verified = storage.getItem(AGE_VERIFIED_KEY) === 'true'
+  if (!verified) {
+    return false
+  }
+
+  // MEDIUM #2 FIX: Validate timestamp hasn't been tampered or expired
+  const timestampStr = storage.getItem(AGE_VERIFIED_TIMESTAMP_KEY)
+  if (!timestampStr) {
+    // No timestamp - invalidate verification
+    storage.removeItem(AGE_VERIFIED_KEY)
+    return false
+  }
+
+  const timestamp = Number(timestampStr)
+  if (!Number.isFinite(timestamp) || timestamp < 0) {
+    // Invalid timestamp - clear and reject
+    storage.removeItem(AGE_VERIFIED_KEY)
+    storage.removeItem(AGE_VERIFIED_TIMESTAMP_KEY)
+    return false
+  }
+
+  const now = Date.now()
+  const age = now - timestamp
+
+  if (age < 0 || age > MAX_AGE_VERIFICATION_DURATION_MS) {
+    // Timestamp is in the future (tampered) or too old - invalidate
+    storage.removeItem(AGE_VERIFIED_KEY)
+    storage.removeItem(AGE_VERIFIED_TIMESTAMP_KEY)
+    return false
+  }
+
+  return true
+}
+
+export function setAgeVerified(storageRef) {
+  const storage = getSessionStorage(storageRef)
+  if (!storage) {
+    return false
+  }
+
+  storage.setItem(AGE_VERIFIED_KEY, 'true')
+  storage.setItem(AGE_VERIFIED_TIMESTAMP_KEY, Date.now().toString())
   return true
 }
 
