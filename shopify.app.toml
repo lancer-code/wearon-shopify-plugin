@@ -15,5 +15,5 @@ use_legacy_install_flow = false
 
 [auth]
 redirect_urls = [
-  "https://wearonai.com/api/v1/auth/shopify/callback"
+  "https://wearonai.com/shopify"
 ]
