@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shopify Mobile Product + Floating WearOn UI</title>
+  <style>
+    :root {
+      --page: #f1f0ec;
+      --surface: #ffffff;
+      --line: #e3e2db;
+      --ink: #141516;
+      --muted: #6b6f73;
+      --brand: #0f766e;
+      --brand-dark: #115e59;
+      --accent: #d97706;
+      --danger: #b42318;
+      --ok: #166534;
+      --radius: 16px;
+      --shadow: 0 12px 32px rgba(10, 12, 14, 0.16);
+      --space-1: 8px;
+      --space-2: 12px;
+      --space-3: 16px;
+      --space-4: 20px;
+      --space-5: 24px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: radial-gradient(900px 520px at 100% -15%, #fbe5bf 0%, transparent 70%), var(--page);
+      color: var(--ink);
+      font-family: "Sora", "Avenir Next", "Segoe UI", sans-serif;
+    }
+
+    .mobile-shell {
+      width: min(100%, 430px);
+      min-height: 100vh;
+      margin: 0 auto;
+      background: var(--surface);
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-2) var(--space-3);
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .topbar .brand {
+      font-size: 0.86rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .icon-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      min-width: 36px;
+      min-height: 36px;
+      padding: 0;
+      font-weight: 700;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .topbar-actions {
+      display: flex;
+      gap: var(--space-1);
+    }
+
+    .media {
+      position: relative;
+      aspect-ratio: 4 / 5;
+      background: linear-gradient(165deg, #efe7d7 0%, #f7f5ee 50%, #dfefe8 100%);
+      border-bottom: 1px solid var(--line);
+      overflow: hidden;
+    }
+
+    .media::before {
+      content: "MOBILE PRODUCT IMAGE";
+      position: absolute;
+      inset: auto 0 22px 0;
+      text-align: center;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      color: #66716d;
+      font-weight: 700;
+    }
+
+    .model {
+      position: absolute;
+      inset: 18px 14px 42px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.75), rgba(255,255,255,0.2));
+      border: 1px dashed rgba(53, 67, 62, 0.3);
+      display: grid;
+      place-items: center;
+      color: #39544d;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.82rem;
+      letter-spacing: 0.09em;
+    }
+
+    .dots {
+      position: absolute;
+      bottom: 10px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #949b9a;
+      opacity: 0.5;
+    }
+
+    .dot.active {
+      background: #115e59;
+      opacity: 1;
+      width: 18px;
+    }
+
+    .section {
+      padding: var(--space-3);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+
+    .title {
+      margin: 8px 0 0;
+      font-size: 1.18rem;
+      line-height: 1.32;
+      letter-spacing: 0.01em;
+    }
+
+    .price-row {
+      margin-top: var(--space-2);
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .price {
+      font-size: 1.22rem;
+      font-weight: 700;
+    }
+
+    .compare {
+      color: var(--muted);
+      text-decoration: line-through;
+      font-size: 0.92rem;
+    }
+
+    .badge {
+      margin-left: auto;
+      font-size: 0.75rem;
+      background: #e9f6f4;
+      color: #0f5c55;
+      border: 1px solid #9fd5cd;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-weight: 700;
+    }
+
+    .label {
+      margin: 0 0 10px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      font-weight: 700;
+    }
+
+    .swatches,
+    .sizes {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .swatch {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      border: 2px solid transparent;
+      cursor: pointer;
+    }
+
+    .swatch.active { border-color: #0d0f10; }
+
+    .size {
+      min-width: 42px;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .size.active {
+      border-color: var(--brand);
+      color: var(--brand);
+      background: #ecf9f7;
+    }
+
+    .cta-wrap {
+      padding: var(--space-3);
+      display: grid;
+      gap: 10px;
+    }
+
+    .cta {
+      min-height: 48px;
+      border-radius: 13px;
+      border: 0;
+      cursor: pointer;
+      font-size: 0.96rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .cta.add { background: #0f172a; color: #fff; }
+    .cta.buy { background: #f59e0b; color: #101418; }
+
+    .accordion {
+      border-top: 1px solid var(--line);
+    }
+
+    .accordion-item {
+      padding: var(--space-3);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      font-size: 0.94rem;
+    }
+
+    .review-row {
+      padding: var(--space-3);
+      display: grid;
+      gap: 6px;
+      color: #34383b;
+      font-size: 0.9rem;
+    }
+
+    .review-stars { color: #d97706; letter-spacing: 0.08em; }
+
+    .wearon-fab {
+      position: fixed;
+      right: 16px;
+      bottom: 18px;
+      z-index: 40;
+      border: 0;
+      border-radius: 999px;
+      min-width: 58px;
+      height: 58px;
+      padding: 0 16px;
+      background: linear-gradient(150deg, var(--brand), var(--brand-dark));
+      color: #fff;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .wearon-fab .dot-mini {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #c7fff0;
+    }
+
+    .sheet {
+      position: fixed;
+      inset: 0;
+      z-index: 45;
+      background: #fff;
+      transform: translateY(100%);
+      transition: transform 280ms cubic-bezier(0.2, 0.7, 0.2, 1);
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .sheet.open { transform: translateY(0); }
+
+    .sheet-head {
+      border-bottom: 1px solid var(--line);
+      padding: var(--space-3);
+      display: grid;
+      gap: 10px;
+      background: linear-gradient(170deg, #ebf8f5 0%, #fff 62%);
+    }
+
+    .sheet-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sheet-title {
+      margin: 0;
+      font-size: 1.05rem;
+      letter-spacing: 0.01em;
+    }
+
+    .close-sheet {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      min-width: 36px;
+      min-height: 36px;
+      background: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .sheet-sub {
+      margin: 0;
+      color: #3b4a46;
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
+    .chip-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .sheet-chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      background: #fff;
+      color: #2f3633;
+    }
+
+    .sheet-chip.mode {
+      border-color: #9fd5cd;
+      background: #e8f7f4;
+      color: #0f5f56;
+    }
+
+    .sheet-chip.credit {
+      border-color: #f0c996;
+      background: #fff4e7;
+      color: #8a4d00;
+    }
+
+    .sheet-body {
+      overflow: auto;
+      padding: var(--space-3);
+      display: grid;
+      gap: var(--space-3);
+      background: #fff;
+    }
+
+    .result-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .result-hero {
+      aspect-ratio: 4 / 3;
+      background: linear-gradient(160deg, #cdebe4, #e9f8f5, #fff2de);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #34544d;
+      text-transform: uppercase;
+      font-size: 0.82rem;
+    }
+
+    .result-copy {
+      padding: var(--space-3);
+      display: grid;
+      gap: 8px;
+    }
+
+    .result-copy h3 {
+      margin: 0;
+      font-size: 0.82rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .size-result {
+      margin: 0;
+      font-size: 1.7rem;
+      line-height: 1;
+      letter-spacing: 0.02em;
+    }
+
+    .status {
+      min-height: 22px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .status.ok { color: var(--ok); }
+    .status.error { color: var(--danger); }
+
+    .sheet-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .sheet-btn {
+      min-height: 46px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #11181a;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .sheet-btn.primary {
+      border: 0;
+      background: linear-gradient(140deg, var(--brand), var(--brand-dark));
+      color: #fff;
+    }
+
+    .mini-controls {
+      border: 1px dashed #c9d2cf;
+      border-radius: var(--radius);
+      padding: var(--space-3);
+      display: grid;
+      gap: 10px;
+      background: #fcfdfc;
+    }
+
+    .mini-controls p {
+      margin: 0;
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .mini-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .mini-row button {
+      min-height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+
+    .mini-row button.active {
+      border-color: var(--brand);
+      color: var(--brand);
+      background: #ecf9f7;
+      font-weight: 700;
+    }
+
+    @media (min-width: 700px) {
+      .wearon-fab {
+        right: calc(50% - 215px + 16px);
+      }
+
+      .sheet {
+        left: 50%;
+        right: auto;
+        width: 430px;
+        transform: translate(-50%, 100%);
+        border-left: 1px solid var(--line);
+        border-right: 1px solid var(--line);
+      }
+
+      .sheet.open { transform: translate(-50%, 0); }
+    }
+  </style>
+</head>
+<body>
+  <main class="mobile-shell" aria-label="Shopify mobile product page mock">
+    <header class="topbar">
+      <button class="icon-btn" type="button" aria-label="Back">&lt;</button>
+      <p class="brand">Dawn Style Mobile PDP</p>
+      <div class="topbar-actions">
+        <button class="icon-btn" type="button" aria-label="Search">S</button>
+        <button class="icon-btn" type="button" aria-label="Cart">2</button>
+      </div>
+    </header>
+
+    <section class="media" aria-label="Product media carousel">
+      <div class="model">Model + Garment</div>
+      <div class="dots" aria-hidden="true">
+        <span class="dot active"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
+    </section>
+
+    <section class="section">
+      <p class="eyebrow">WearOn Studio</p>
+      <h1 class="title">Essential Cotton Overshirt</h1>
+      <div class="price-row">
+        <span class="price">$74.00</span>
+        <span class="compare">$96.00</span>
+        <span class="badge">23% Off</span>
+      </div>
+    </section>
+
+    <section class="section">
+      <p class="label">Color: Moss</p>
+      <div class="swatches">
+        <button class="swatch active" type="button" style="background:#5a7f6b" aria-label="Moss"></button>
+        <button class="swatch" type="button" style="background:#1f2937" aria-label="Charcoal"></button>
+        <button class="swatch" type="button" style="background:#d1c2a7" aria-label="Sand"></button>
+        <button class="swatch" type="button" style="background:#7f5539" aria-label="Rust"></button>
+      </div>
+    </section>
+
+    <section class="section">
+      <p class="label">Size</p>
+      <div class="sizes">
+        <button class="size" type="button">XS</button>
+        <button class="size active" type="button">S</button>
+        <button class="size" type="button">M</button>
+        <button class="size" type="button">L</button>
+        <button class="size" type="button">XL</button>
+      </div>
+    </section>
+
+    <section class="cta-wrap">
+      <button class="cta add" type="button">Add to Cart</button>
+      <button class="cta buy" type="button">Buy Now</button>
+    </section>
+
+    <section class="accordion" aria-label="Product details">
+      <div class="accordion-item"><span>Description</span><span>+</span></div>
+      <div class="accordion-item"><span>Shipping & Returns</span><span>+</span></div>
+      <div class="accordion-item"><span>Care Instructions</span><span>+</span></div>
+    </section>
+
+    <section class="review-row">
+      <span class="review-stars">★★★★★</span>
+      <span>4.8 average fit confidence from 412 buyers</span>
+    </section>
+  </main>
+
+  <button id="wearonFab" class="wearon-fab" type="button" aria-haspopup="dialog" aria-controls="wearonSheet" aria-expanded="false">
+    <span class="dot-mini"></span>
+    <span>Fit</span>
+  </button>
+
+  <section id="wearonSheet" class="sheet" role="dialog" aria-modal="true" aria-label="WearOn fit assistant" hidden>
+    <header class="sheet-head">
+      <div class="sheet-row">
+        <h2 class="sheet-title">WearOn Fit Assistant</h2>
+        <button id="closeSheet" class="close-sheet" type="button" aria-label="Close">x</button>
+      </div>
+      <p class="sheet-sub">Full-screen shopper panel. Mobile-first. No camera. Start preview from product context.</p>
+      <div class="chip-row">
+        <span id="modeChip" class="sheet-chip mode">Mode: Absorb</span>
+        <span id="creditChip" class="sheet-chip credit">Credits: 2</span>
+      </div>
+    </header>
+
+    <div class="sheet-body">
+      <article class="result-card" aria-live="polite">
+        <div id="resultHero" class="result-hero">Preview surface</div>
+        <div class="result-copy">
+          <h3>Recommended Size</h3>
+          <p id="sizeText" class="size-result">M</p>
+          <p id="resultText">Balanced shoulder room and clean chest fit for everyday wear.</p>
+          <p id="statusText" class="status">Ready</p>
+        </div>
+      </article>
+
+      <div class="sheet-actions">
+        <button id="startBtn" class="sheet-btn primary" type="button">Start Preview</button>
+        <button id="buyBtn" class="sheet-btn" type="button">Buy Credits</button>
+      </div>
+
+      <div class="mini-controls">
+        <p>Prototype Toggles</p>
+        <div id="modeRow" class="mini-row">
+          <button data-mode="absorb" class="active" type="button">Absorb</button>
+          <button data-mode="resell" type="button">Resell</button>
+          <button data-credits="0" type="button">0 Cr</button>
+          <button data-credits="2" class="active" type="button">2 Cr</button>
+        </div>
+        <div id="stateRow" class="mini-row">
+          <button data-state="ready" class="active" type="button">Ready</button>
+          <button data-state="loading" type="button">Loading</button>
+          <button data-state="result" type="button">Result</button>
+          <button data-state="error" type="button">Error</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const fab = document.getElementById('wearonFab');
+    const sheet = document.getElementById('wearonSheet');
+    const closeSheet = document.getElementById('closeSheet');
+
+    const modeChip = document.getElementById('modeChip');
+    const creditChip = document.getElementById('creditChip');
+    const startBtn = document.getElementById('startBtn');
+    const buyBtn = document.getElementById('buyBtn');
+    const resultHero = document.getElementById('resultHero');
+    const sizeText = document.getElementById('sizeText');
+    const resultText = document.getElementById('resultText');
+    const statusText = document.getElementById('statusText');
+
+    let mode = 'absorb';
+    let credits = 2;
+    let state = 'ready';
+
+    function markActive(container, predicate) {
+      for (const btn of container.querySelectorAll('button')) {
+        btn.classList.toggle('active', predicate(btn));
+      }
+    }
+
+    function openSheet() {
+      sheet.hidden = false;
+      requestAnimationFrame(() => sheet.classList.add('open'));
+      fab.setAttribute('aria-expanded', 'true');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function hideSheet() {
+      sheet.classList.remove('open');
+      fab.setAttribute('aria-expanded', 'false');
+      setTimeout(() => {
+        if (!sheet.classList.contains('open')) sheet.hidden = true;
+      }, 280);
+      document.body.style.overflow = '';
+    }
+
+    function render() {
+      modeChip.textContent = `Mode: ${mode === 'absorb' ? 'Absorb' : 'Resell'}`;
+      creditChip.textContent = `Credits: ${credits}`;
+
+      const blocked = mode === 'resell' && credits === 0;
+      startBtn.disabled = blocked || state === 'loading';
+      buyBtn.style.display = mode === 'resell' ? 'block' : 'none';
+
+      if (blocked) {
+        startBtn.textContent = 'Credits Required';
+        statusText.textContent = 'No shopper credits available';
+        statusText.className = 'status error';
+      } else {
+        startBtn.textContent = state === 'loading' ? 'Loading...' : 'Start Preview';
+      }
+
+      if (state === 'ready') {
+        resultHero.textContent = 'Preview surface';
+        sizeText.textContent = 'M';
+        resultText.textContent = 'Balanced shoulder room and clean chest fit for everyday wear.';
+        if (!blocked) {
+          statusText.textContent = 'Ready';
+          statusText.className = 'status';
+        }
+      }
+
+      if (state === 'loading') {
+        resultHero.textContent = 'Generating preview...';
+        sizeText.textContent = '--';
+        resultText.textContent = 'Preparing recommendation and visual output.';
+        statusText.textContent = 'Working';
+        statusText.className = 'status';
+      }
+
+      if (state === 'result') {
+        resultHero.textContent = 'Result image + fit overlay';
+        sizeText.textContent = 'M';
+        resultText.textContent = 'Best match: relaxed body, clean sleeve length, comfortable movement.';
+        statusText.textContent = 'Result ready';
+        statusText.className = 'status ok';
+      }
+
+      if (state === 'error') {
+        resultHero.textContent = 'Could not generate preview';
+        sizeText.textContent = '--';
+        resultText.textContent = 'Please retry or check network and account state.';
+        statusText.textContent = 'Generation failed';
+        statusText.className = 'status error';
+      }
+    }
+
+    fab.addEventListener('click', openSheet);
+    closeSheet.addEventListener('click', hideSheet);
+
+    sheet.addEventListener('click', (event) => {
+      if (event.target === sheet) hideSheet();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !sheet.hidden) hideSheet();
+    });
+
+    document.getElementById('modeRow').addEventListener('click', (event) => {
+      const btn = event.target.closest('button');
+      if (!btn) return;
+
+      if (btn.dataset.mode) mode = btn.dataset.mode;
+      if (btn.dataset.credits) credits = Number(btn.dataset.credits);
+
+      markActive(document.getElementById('modeRow'), (b) => {
+        if (b.dataset.mode) return b.dataset.mode === mode;
+        if (b.dataset.credits) return Number(b.dataset.credits) === credits;
+        return false;
+      });
+
+      render();
+    });
+
+    document.getElementById('stateRow').addEventListener('click', (event) => {
+      const btn = event.target.closest('button');
+      if (!btn || !btn.dataset.state) return;
+
+      state = btn.dataset.state;
+      markActive(document.getElementById('stateRow'), (b) => b.dataset.state === state);
+      render();
+    });
+
+    startBtn.addEventListener('click', () => {
+      state = 'loading';
+      markActive(document.getElementById('stateRow'), (b) => b.dataset.state === state);
+      render();
+
+      setTimeout(() => {
+        state = 'result';
+        markActive(document.getElementById('stateRow'), (b) => b.dataset.state === state);
+        render();
+      }, 850);
+    });
+
+    buyBtn.addEventListener('click', () => {
+      credits = 2;
+      mode = 'resell';
+      markActive(document.getElementById('modeRow'), (b) => {
+        if (b.dataset.mode) return b.dataset.mode === mode;
+        if (b.dataset.credits) return Number(b.dataset.credits) === credits;
+        return false;
+      });
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

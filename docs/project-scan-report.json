@@ -1,0 +1,428 @@
+{
+  "workflow_version": "1.2.0",
+  "timestamps": {
+    "started": "2026-02-18T16:13:56Z",
+    "last_updated": "2026-02-18T16:46:57Z"
+  },
+  "mode": "initial_scan",
+  "scan_level": "deep",
+  "project_root": "/home/glactic/projects/personal/wearon/wearon/wearon-shopify",
+  "output_folder": "/home/glactic/projects/personal/wearon/wearon/wearon-shopify/docs",
+  "completed_steps": [
+    {
+      "step": "step_1",
+      "status": "completed",
+      "timestamp": "2026-02-18T16:18:30Z",
+      "summary": "Classified as monolith with 1 part",
+      "outputs": [
+        "project_structure",
+        "project_parts_metadata"
+      ]
+    },
+    {
+      "step": "step_2",
+      "status": "completed",
+      "timestamp": "2026-02-18T16:27:22Z",
+      "summary": "Found 10 existing docs; captured plugin purpose/function context",
+      "outputs": [
+        "existing_documentation_inventory",
+        "user_provided_context"
+      ]
+    },
+    {
+      "step": "step_3",
+      "status": "completed",
+      "timestamp": "2026-02-18T16:29:26Z",
+      "summary": "Tech stack analyzed: Shopify extension + vanilla JS widget architecture",
+      "outputs": [
+        "technology_stack",
+        "architecture_patterns"
+      ]
+    },
+    {
+      "step": "step_4",
+      "status": "completed",
+      "timestamp": "2026-02-18T16:34:22Z",
+      "summary": "Conditional analysis complete, generated api/component/comprehensive docs",
+      "outputs": [
+        "api-contracts-main.md",
+        "component-inventory-main.md",
+        "comprehensive-analysis-main.md"
+      ]
+    },
+    {
+      "step": "step_5",
+      "status": "completed",
+      "timestamp": "2026-02-18T16:37:57Z",
+      "summary": "Source tree documented",
+      "outputs": [
+        "source-tree-analysis.md"
+      ]
+    },
+    {
+      "step": "step_6",
+      "status": "completed",
+      "timestamp": "2026-02-18T16:37:57Z",
+      "summary": "Dev/deployment guides analyzed from local repo signals",
+      "outputs": [
+        "development_instructions",
+        "deployment_configuration",
+        "contribution_guidelines"
+      ]
+    },
+    {
+      "step": "step_8",
+      "status": "completed",
+      "timestamp": "2026-02-18T16:38:28Z",
+      "summary": "Architecture docs written for 1 part",
+      "outputs": [
+        "architecture.md"
+      ]
+    },
+    {
+      "step": "step_9",
+      "status": "completed",
+      "timestamp": "2026-02-18T16:39:23Z",
+      "summary": "All supporting docs written",
+      "outputs": [
+        "project-overview.md",
+        "component-inventory.md",
+        "development-guide.md",
+        "api-contracts.md"
+      ]
+    },
+    {
+      "step": "step_10",
+      "status": "completed",
+      "timestamp": "2026-02-18T16:40:14Z",
+      "summary": "Master index generated",
+      "outputs": [
+        "index.md"
+      ]
+    },
+    {
+      "step": "step_11_iteration",
+      "status": "completed",
+      "timestamp": "2026-02-18T16:41:55Z",
+      "summary": "Deleted other documents per user request; retained final docs set",
+      "outputs": [
+        "api-contracts.md",
+        "architecture.md",
+        "component-inventory.md",
+        "development-guide.md",
+        "index.md",
+        "project-overview.md",
+        "project-scan-report.json",
+        "source-tree-analysis.md"
+      ]
+    },
+    {
+      "step": "step_11_iteration",
+      "status": "completed",
+      "timestamp": "2026-02-18T16:42:50Z",
+      "summary": "Reviewed architecture section on user request",
+      "outputs": [
+        "architecture.md"
+      ]
+    },
+    {
+      "step": "step_11_iteration",
+      "status": "completed",
+      "timestamp": "2026-02-18T16:46:57Z",
+      "summary": "Added absorb/resell sequence + widget state diagrams to architecture",
+      "outputs": [
+        "architecture.md"
+      ]
+    }
+  ],
+  "current_step": "step_11",
+  "findings": {
+    "project_structure": {
+      "repository_type": "monolith",
+      "parts_count": 1,
+      "primary_tech": "JavaScript (Shopify theme app extension)",
+      "project_root": "/home/glactic/projects/personal/wearon/wearon/wearon-shopify"
+    },
+    "project_parts_metadata": [
+      {
+        "part_id": "main",
+        "part_name": "main",
+        "root_path": "/home/glactic/projects/personal/wearon/wearon/wearon-shopify",
+        "project_type_id": "extension",
+        "display_name": "Shopify Theme App Extension"
+      }
+    ],
+    "project_classification": {
+      "repository_type": "monolith",
+      "parts_count": 1,
+      "primary_language": "JavaScript",
+      "architecture_type": "Shopify extension"
+    },
+    "existing_documentation_inventory": {
+      "existing_docs": [
+        {
+          "path": "docs/bmad/implementation-artifacts/2-2-shopify-oauth-store-registration.md",
+          "file_type": "implementation-story",
+          "part_id": "main"
+        },
+        {
+          "path": "docs/bmad/implementation-artifacts/4-2-plugin-theme-app-extension-core.md",
+          "file_type": "implementation-story",
+          "part_id": "main"
+        },
+        {
+          "path": "docs/bmad/implementation-artifacts/4-3-try-on-experience-privacy.md",
+          "file_type": "implementation-story",
+          "part_id": "main"
+        },
+        {
+          "path": "docs/bmad/implementation-artifacts/4-4-plugin-accessibility.md",
+          "file_type": "implementation-story",
+          "part_id": "main"
+        },
+        {
+          "path": "docs/bmad/implementation-artifacts/6-2-hidden-shopify-product-creation.md",
+          "file_type": "implementation-story",
+          "part_id": "main"
+        },
+        {
+          "path": "docs/bmad/implementation-artifacts/6-3-shopify-order-webhook-processing.md",
+          "file_type": "implementation-story",
+          "part_id": "main"
+        },
+        {
+          "path": "docs/bmad/implementation-artifacts/6-4-shopper-credit-balance-plugin-flow.md",
+          "file_type": "implementation-story",
+          "part_id": "main"
+        },
+        {
+          "path": "docs/bmad/planning-artifacts/bmm-workflow-status.yaml",
+          "file_type": "workflow-status",
+          "part_id": "main"
+        },
+        {
+          "path": "docs/bmad/planning-artifacts/epics.md",
+          "file_type": "epics",
+          "part_id": "main"
+        },
+        {
+          "path": "docs/bmad/planning-artifacts/prd.md",
+          "file_type": "prd",
+          "part_id": "main"
+        }
+      ],
+      "existing_docs_count": 10
+    },
+    "user_provided_context": {
+      "user_guidance": "Use docs/bmad planning + implementation artifacts as source material to build new documentation outputs; do not surface those source files as existing-doc links in generated docs.",
+      "focus_areas": [
+        "business purpose of plugin",
+        "required storefront functions",
+        "billing and credit workflows",
+        "privacy and accessibility requirements"
+      ],
+      "source_docs_policy": {
+        "use_as_input_context": true,
+        "include_in_generated_existing_docs_section": false
+      }
+    },
+    "technology_stack": [
+      {
+        "part_id": "main",
+        "tech_summary": "Shopify Theme App Extension using vanilla JavaScript ES modules + Liquid block + Vitest tests",
+        "technology_table": [
+          {
+            "category": "Platform",
+            "technology": "Shopify App / Theme App Extension",
+            "version": "Shopify Webhooks API 2026-01",
+            "justification": "Configured in shopify.app.toml with embedded app, scopes, and managed installation"
+          },
+          {
+            "category": "Language",
+            "technology": "JavaScript (ES Modules)",
+            "version": "ESM",
+            "justification": "package.json type=module and module script loading in tryon block"
+          },
+          {
+            "category": "Templating",
+            "technology": "Liquid",
+            "version": "Shopify Theme",
+            "justification": "blocks/tryon-block.liquid injects widget host and module script"
+          },
+          {
+            "category": "UI Runtime",
+            "technology": "Vanilla JS + Shadow DOM",
+            "version": "Browser DOM APIs",
+            "justification": "tryon-widget.js creates sandboxed widget, camera flow, privacy gate, and resell UX"
+          },
+          {
+            "category": "Testing",
+            "technology": "Vitest",
+            "version": "via shared node_modules",
+            "justification": "__tests__ cover widget, privacy flow, accessibility, and size recommendation behavior"
+          },
+          {
+            "category": "Configuration",
+            "technology": "shopify.app.toml",
+            "version": "current",
+            "justification": "Defines client_id, scopes, embedded app behavior, webhooks API version, and auth redirect"
+          }
+        ]
+      }
+    ],
+    "architecture_patterns": [
+      {
+        "part_id": "main",
+        "architecture_pattern": "Embedded storefront widget pattern with server-proxy mediated billing/credit access",
+        "details": [
+          "Theme app extension block renders host on product pages and loads module widget",
+          "Widget is sandboxed with Shadow DOM/scoped styling to avoid theme collisions",
+          "Client runtime enforces age/privacy gates, camera capture, and accessibility affordances",
+          "Billing/access mode (absorb vs resell) is resolved from API config and drives checkout/balance flow",
+          "Shopify checkout/cart links and webhook-backed credit updates support resell mode"
+        ]
+      }
+    ],
+    "technology_stack_summary": [
+      {
+        "part_id": "main",
+        "tech_summary": "Shopify extension on JavaScript"
+      }
+    ],
+    "step4": {
+      "api_contracts_main": {
+        "file": "docs/api-contracts-main.md",
+        "api_count": 4,
+        "summary": "Documented widget runtime endpoints, checkout URL contract, and required webhook/platform contracts"
+      },
+      "state_management_patterns_main": {
+        "part_id": "main",
+        "pattern_type": "local-ui-state + session-backed guard state + server-resolved access state",
+        "patterns": [
+          "Widget-local mutable state in closure variables (ageVerified, privacyAcknowledged, requireLogin, billingMode, shopperBalance, activeStream, latestCapturedPhoto)",
+          "Session persistence via sessionStorage for privacy acknowledgment and age verification timestamps",
+          "Access-control state resolved from API config (absorb_mode vs resell_mode) then projected to UI state machine",
+          "Credit state fetched and polled asynchronously from shopper balance endpoint",
+          "No external state library (no Redux/Context/MobX); state is runtime-local and DOM-driven"
+        ],
+        "strengths": [
+          "Simple dependency surface for storefront embedding",
+          "Fail-closed behavior on config errors for safer access control"
+        ],
+        "risks": [
+          "State reset risk if host reinitialized unexpectedly",
+          "Session-only persistence means hard refresh/session loss resets gates"
+        ]
+      },
+      "ui_component_inventory_main": {
+        "file": "docs/component-inventory-main.md",
+        "component_groups": [
+          "container",
+          "privacy_and_age_gate",
+          "try_on_controls",
+          "camera_and_pose_guidance",
+          "credit_and_branding"
+        ],
+        "summary": "Documented storefront component inventory with accessibility and resell-flow UI states"
+      },
+      "comprehensive_analysis_main": {
+        "file": "docs/comprehensive-analysis-main.md",
+        "focus_coverage": [
+          "business purpose",
+          "required plugin functions",
+          "billing_and_credit_workflows",
+          "privacy_and_accessibility"
+        ],
+        "summary": "Produced integrated analysis from code + planning artifacts for brownfield documentation"
+      }
+    },
+    "step6": {
+      "development_instructions": {
+        "prerequisites": [
+          "Node.js runtime available in workspace",
+          "Shopify app configuration present in shopify.app.toml"
+        ],
+        "setup": [
+          "Install dependencies at workspace root so shared node_modules exists",
+          "Use the repository root as working directory"
+        ],
+        "run_commands": [
+          "No explicit dev/start script defined in this repo"
+        ],
+        "test_commands": [
+          "npm test",
+          "node ../node_modules/vitest/vitest.mjs run"
+        ],
+        "notes": [
+          "This repo contains storefront extension assets/tests; upstream platform services are in other repositories"
+        ]
+      }
+    },
+    "step8": {
+      "architecture_document": {
+        "file": "docs/architecture.md",
+        "parts_count": 1,
+        "summary": "Architecture document generated for single-part Shopify extension"
+      }
+    },
+    "step9": {
+      "supporting_documentation": {
+        "generated_files": [
+          "project-overview.md",
+          "component-inventory.md",
+          "development-guide.md",
+          "api-contracts.md"
+        ],
+        "omitted_optional": [
+          "deployment-guide.md (no deployment configs found)",
+          "contribution-guide.md (no dedicated contributing file found)",
+          "data-models.md (project type does not require)"
+        ],
+        "source_docs_policy_applied": true
+      }
+    },
+    "step10": {
+      "index": {
+        "file": "docs/index.md",
+        "missing_docs_list": [],
+        "markers_added": 0,
+        "summary": "Master index generated with no incomplete markers"
+      }
+    },
+    "step11": {
+      "cleanup_request": {
+        "action": "delete_other_documents",
+        "retained_files": [
+          "api-contracts.md",
+          "architecture.md",
+          "component-inventory.md",
+          "development-guide.md",
+          "index.md",
+          "project-overview.md",
+          "project-scan-report.json",
+          "source-tree-analysis.md"
+        ]
+      },
+      "last_reviewed_section": "architecture",
+      "architecture_diagrams_added": true
+    }
+  },
+  "outputs_generated": [
+    "api-contracts.md",
+    "architecture.md",
+    "component-inventory.md",
+    "development-guide.md",
+    "index.md",
+    "project-overview.md",
+    "project-scan-report.json",
+    "source-tree-analysis.md"
+  ],
+  "resume_instructions": "Starting from step 1",
+  "project_types": [
+    {
+      "part_id": "main",
+      "project_type_id": "extension",
+      "display_name": "Shopify Theme App Extension"
+    }
+  ]
+}
