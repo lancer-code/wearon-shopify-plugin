@@ -1,0 +1,1 @@
+/home/glactic/.claude/piper-voices
