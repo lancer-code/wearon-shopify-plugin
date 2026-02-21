@@ -1,0 +1,2267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WearOn — Shopify Admin Plugin Prototype</title>
+<style>
+  /* ── Polaris Design Tokens ─────────────────────────────────────── */
+  :root {
+    --p-font-family-sans: -apple-system, BlinkMacSystemFont, 'San Francisco', 'Segoe UI', Roboto, sans-serif;
+    --p-font-size-75:  0.75rem;
+    --p-font-size-100: 0.875rem;
+    --p-font-size-200: 1rem;
+    --p-font-size-300: 1.25rem;
+    --p-font-size-500: 1.5rem;
+    --p-color-bg:           #f1f2f4;
+    --p-color-bg-surface:   #ffffff;
+    --p-color-bg-surface-secondary: #f7f8f9;
+    --p-color-bg-fill-brand: #008060;
+    --p-color-bg-fill-success: #e3f1df;
+    --p-color-bg-fill-warning: #fff5ea;
+    --p-color-bg-fill-critical: #fff4f4;
+    --p-color-bg-fill-info:  #e8f5fa;
+    --p-color-text:          #202223;
+    --p-color-text-secondary:#6d7175;
+    --p-color-text-success:  #1a7a4a;
+    --p-color-text-warning:  #b24b00;
+    --p-color-text-critical: #c0392b;
+    --p-color-text-info:     #006e9c;
+    --p-color-border:        #c9cccf;
+    --p-color-border-secondary: #e1e3e5;
+    --p-color-icon-success:  #1a7a4a;
+    --p-border-radius-200:   8px;
+    --p-border-radius-100:   4px;
+    --p-shadow-100: 0 1px 0 rgba(0,0,0,0.05), 0 0 0 1px rgba(63,63,68,0.05), 0 1px 3px rgba(63,63,68,0.15);
+    --p-shadow-200: 0 2px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(63,63,68,0.08);
+    --shopify-nav: #1a1a2e;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--p-font-family-sans);
+    font-size: var(--p-font-size-100);
+    color: var(--p-color-text);
+    background: #f1f2f4;
+    min-height: 100vh;
+  }
+
+  /* ── Shopify Admin Shell ───────────────────────────────────────── */
+  .shopify-shell {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  .shopify-nav {
+    width: 240px;
+    background: var(--shopify-nav);
+    color: #fff;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 16px 0;
+  }
+
+  .shopify-nav-logo {
+    padding: 8px 16px 24px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    opacity: 0.9;
+    letter-spacing: -0.3px;
+  }
+
+  .shopify-nav-item {
+    padding: 10px 16px;
+    font-size: var(--p-font-size-100);
+    color: rgba(255,255,255,0.65);
+    cursor: pointer;
+    border-radius: 6px;
+    margin: 1px 8px;
+    transition: background 0.15s;
+  }
+
+  .shopify-nav-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+  .shopify-nav-item.active { background: rgba(255,255,255,0.15); color: #fff; font-weight: 600; }
+
+  .shopify-nav-section {
+    padding: 16px 16px 6px;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.35);
+    font-weight: 600;
+    margin-top: 8px;
+  }
+
+  .shopify-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .shopify-topbar {
+    background: #fff;
+    border-bottom: 1px solid var(--p-color-border-secondary);
+    padding: 0 20px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .shopify-topbar-title {
+    font-size: var(--p-font-size-200);
+    font-weight: 600;
+    color: var(--p-color-text);
+  }
+
+  .shopify-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: var(--p-font-size-75);
+    color: var(--p-color-text-secondary);
+  }
+
+  .shopify-content {
+    flex: 1;
+    background: var(--p-color-bg);
+    overflow-y: auto;
+  }
+
+  /* ── App Frame ─────────────────────────────────────────────────── */
+  .app-frame {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 20px 20px 40px;
+  }
+
+  /* ── Polaris Components ────────────────────────────────────────── */
+
+  /* Card */
+  .p-card {
+    background: var(--p-color-bg-surface);
+    border-radius: var(--p-border-radius-200);
+    box-shadow: var(--p-shadow-100);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .p-card-section + .p-card-section {
+    border-top: 1px solid var(--p-color-border-secondary);
+    margin-top: 16px;
+    padding-top: 16px;
+  }
+
+  /* Text */
+  .p-text-heading-lg { font-size: var(--p-font-size-500); font-weight: 700; line-height: 1.3; }
+  .p-text-heading-md { font-size: var(--p-font-size-300); font-weight: 600; line-height: 1.4; margin-bottom: 4px; }
+  .p-text-heading-sm { font-size: var(--p-font-size-200); font-weight: 600; line-height: 1.4; }
+  .p-text-body      { font-size: var(--p-font-size-100); line-height: 1.5; }
+  .p-text-sm        { font-size: var(--p-font-size-75); line-height: 1.5; }
+  .p-text-subdued   { color: var(--p-color-text-secondary); }
+  .p-text-success   { color: var(--p-color-text-success); }
+  .p-text-warning   { color: var(--p-color-text-warning); }
+  .p-text-critical  { color: var(--p-color-text-critical); }
+  .p-text-info      { color: var(--p-color-text-info); }
+
+  /* Badge */
+  .p-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: var(--p-font-size-75);
+    font-weight: 600;
+    line-height: 1.6;
+  }
+  .p-badge-success  { background: var(--p-color-bg-fill-success); color: var(--p-color-text-success); }
+  .p-badge-info     { background: var(--p-color-bg-fill-info);    color: var(--p-color-text-info); }
+  .p-badge-warning  { background: var(--p-color-bg-fill-warning); color: var(--p-color-text-warning); }
+  .p-badge-critical { background: var(--p-color-bg-fill-critical);color: var(--p-color-text-critical); }
+  .p-badge-neutral  { background: #f0f0f0; color: var(--p-color-text-secondary); }
+
+  /* Button */
+  .p-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: var(--p-border-radius-100);
+    font-size: var(--p-font-size-100);
+    font-weight: 500;
+    font-family: var(--p-font-family-sans);
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+    text-decoration: none;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  .p-btn-primary {
+    background: var(--p-color-bg-fill-brand);
+    color: #fff;
+    border-color: var(--p-color-bg-fill-brand);
+  }
+  .p-btn-primary:hover { background: #006e52; border-color: #006e52; }
+  .p-btn-secondary {
+    background: #fff;
+    color: var(--p-color-text);
+    border-color: var(--p-color-border);
+  }
+  .p-btn-secondary:hover { background: #f6f6f7; }
+  .p-btn-plain {
+    background: transparent;
+    color: var(--p-color-bg-fill-brand);
+    border-color: transparent;
+    padding: 4px 0;
+  }
+  .p-btn-plain:hover { text-decoration: underline; }
+  .p-btn-critical {
+    background: #fff;
+    color: var(--p-color-text-critical);
+    border-color: var(--p-color-border);
+  }
+  .p-btn-critical:hover { background: #fff4f4; }
+  .p-btn-full { width: 100%; }
+  .p-btn-sm { padding: 5px 10px; font-size: var(--p-font-size-75); }
+
+  /* TextField */
+  .p-field { margin-bottom: 16px; }
+  .p-field label {
+    display: block;
+    font-size: var(--p-font-size-100);
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: var(--p-color-text);
+  }
+  .p-field input, .p-field textarea, .p-field select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--p-color-border);
+    border-radius: var(--p-border-radius-100);
+    font-size: var(--p-font-size-100);
+    font-family: var(--p-font-family-sans);
+    color: var(--p-color-text);
+    background: #fff;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+    line-height: 1.5;
+  }
+  .p-field input:focus, .p-field textarea:focus, .p-field select:focus {
+    border-color: #008060;
+    box-shadow: 0 0 0 2px rgba(0,128,96,0.2);
+  }
+  .p-field-error input { border-color: #d82c0d; }
+  .p-field-error .p-field-error-msg {
+    font-size: var(--p-font-size-75);
+    color: var(--p-color-text-critical);
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .p-field-helper {
+    font-size: var(--p-font-size-75);
+    color: var(--p-color-text-secondary);
+    margin-top: 4px;
+  }
+
+  /* Password wrapper + toggle */
+  .pw-wrap {
+    position: relative;
+  }
+  .pw-wrap input {
+    padding-right: 40px;
+  }
+  .pw-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--p-color-text-secondary);
+    padding: 4px;
+    font-size: 0.9rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .pw-toggle:hover { color: var(--p-color-text); }
+
+  /* Checkbox row */
+  .p-field-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 16px;
+    cursor: pointer;
+  }
+  .p-field-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    cursor: pointer;
+    accent-color: var(--p-color-bg-fill-brand);
+  }
+  .p-field-checkbox span {
+    font-size: var(--p-font-size-75);
+    color: var(--p-color-text-secondary);
+    line-height: 1.5;
+  }
+  .p-field-checkbox a { color: var(--p-color-bg-fill-brand); text-decoration: none; }
+  .p-field-checkbox a:hover { text-decoration: underline; }
+
+  /* Banner */
+  .p-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: var(--p-border-radius-200);
+    margin-bottom: 16px;
+    border: 1px solid transparent;
+    font-size: var(--p-font-size-100);
+    line-height: 1.5;
+  }
+  .p-banner-success  { background: var(--p-color-bg-fill-success); border-color: #b3d9c4; color: #1a4731; }
+  .p-banner-warning  { background: var(--p-color-bg-fill-warning); border-color: #f5c98a; color: #7a3500; }
+  .p-banner-critical { background: var(--p-color-bg-fill-critical);border-color: #f4a9a5; color: #7a0000; }
+  .p-banner-info     { background: var(--p-color-bg-fill-info);    border-color: #90cfe3; color: #004a6b; }
+  .p-banner-icon { font-size: 1.1rem; margin-top: 1px; flex-shrink: 0; }
+  .p-banner-body { flex: 1; }
+  .p-banner-title { font-weight: 600; margin-bottom: 2px; }
+  .p-banner-dismiss {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.6;
+    font-size: 1rem;
+    padding: 4px;
+    flex-shrink: 0;
+    line-height: 1;
+    min-width: 28px;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--p-border-radius-100);
+  }
+  .p-banner-dismiss:hover { opacity: 1; }
+
+  /* Tabs */
+  .p-tabs {
+    background: var(--p-color-bg-surface);
+    border-radius: var(--p-border-radius-200) var(--p-border-radius-200) 0 0;
+    box-shadow: var(--p-shadow-100);
+    border-bottom: 1px solid var(--p-color-border-secondary);
+    overflow: hidden;
+  }
+  .p-tabs-list {
+    display: flex;
+    list-style: none;
+    padding: 0 4px;
+  }
+  .p-tab {
+    padding: 14px 16px;
+    font-size: var(--p-font-size-100);
+    font-weight: 500;
+    color: var(--p-color-text-secondary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .p-tab:hover { color: var(--p-color-text); }
+  .p-tab.active {
+    color: var(--p-color-bg-fill-brand);
+    border-bottom-color: var(--p-color-bg-fill-brand);
+    font-weight: 600;
+  }
+
+  .p-tab-panel {
+    background: var(--p-color-bg-surface);
+    border-radius: 0 0 var(--p-border-radius-200) var(--p-border-radius-200);
+    box-shadow: var(--p-shadow-100);
+    padding: 20px;
+    display: none;
+  }
+  .p-tab-panel.active { display: block; }
+
+  /* InlineGrid */
+  .p-inline-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .p-inline-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .p-inline-grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) {
+    .p-inline-grid-2, .p-inline-grid-3, .p-inline-grid-4 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 400px) {
+    .p-inline-grid-4 { grid-template-columns: 1fr; }
+  }
+
+  /* BlockStack */
+  .p-block-stack { display: flex; flex-direction: column; }
+  .p-block-stack-gap-1 { gap: 4px; }
+  .p-block-stack-gap-2 { gap: 8px; }
+  .p-block-stack-gap-3 { gap: 12px; }
+  .p-block-stack-gap-4 { gap: 16px; }
+
+  /* InlineStack */
+  .p-inline-stack { display: flex; align-items: center; }
+  .p-inline-stack-gap-2 { gap: 8px; }
+  .p-inline-stack-gap-3 { gap: 12px; }
+  .p-inline-stack-between { justify-content: space-between; }
+  .p-inline-stack-wrap { flex-wrap: wrap; }
+
+  /* Divider */
+  .p-divider { border: none; border-top: 1px solid var(--p-color-border-secondary); margin: 20px 0; }
+
+  /* Resource list item */
+  .p-resource-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--p-color-border-secondary);
+  }
+  .p-resource-item:last-child { border-bottom: none; }
+
+  /* Monospace */
+  .mono {
+    font-family: 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', monospace;
+    font-size: 0.82rem;
+    background: var(--p-color-bg-surface-secondary);
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid var(--p-color-border-secondary);
+    word-break: break-all;
+  }
+
+  /* Modal */
+  .p-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .p-modal-overlay.open { display: flex; }
+  .p-modal {
+    background: #fff;
+    border-radius: var(--p-border-radius-200);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    max-width: 480px;
+    width: 100%;
+    overflow: hidden;
+  }
+  .p-modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--p-color-border-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .p-modal-body { padding: 20px; }
+  .p-modal-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--p-color-border-secondary);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* Toast */
+  .p-toast-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 600;
+    pointer-events: none;
+  }
+  .p-toast {
+    background: #1a1a2e;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: var(--p-border-radius-200);
+    font-size: var(--p-font-size-100);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.2s;
+    pointer-events: auto;
+  }
+  .p-toast.show { opacity: 1; transform: translateY(0); }
+
+  /* Auth page */
+  .auth-page {
+    min-height: 100vh;
+    background: var(--p-color-bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .auth-logo {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--p-color-bg-fill-brand);
+    margin-bottom: 24px;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .auth-card {
+    background: #fff;
+    border-radius: var(--p-border-radius-200);
+    box-shadow: var(--p-shadow-200);
+    padding: 28px;
+    width: 100%;
+    max-width: 440px;
+  }
+  .auth-card h1 {
+    font-size: var(--p-font-size-300);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .auth-card .auth-subtitle {
+    color: var(--p-color-text-secondary);
+    margin-bottom: 24px;
+    font-size: var(--p-font-size-100);
+  }
+  .auth-footer {
+    text-align: center;
+    margin-top: 16px;
+    font-size: var(--p-font-size-75);
+    color: var(--p-color-text-secondary);
+  }
+  .auth-footer a {
+    color: var(--p-color-bg-fill-brand);
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .auth-footer a:hover { text-decoration: underline; }
+  .auth-security {
+    margin-top: 16px;
+    text-align: center;
+    font-size: var(--p-font-size-75);
+    color: var(--p-color-text-secondary);
+  }
+
+  /* Overview Board */
+  .overview-board {
+    background: linear-gradient(135deg, #fff 60%, #f0faf6 100%);
+    border-radius: var(--p-border-radius-200);
+    box-shadow: var(--p-shadow-100);
+    padding: 20px;
+    margin-bottom: 16px;
+    border: 1px solid var(--p-color-border-secondary);
+  }
+  .overview-board-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .overview-store-domain {
+    font-size: var(--p-font-size-200);
+    font-weight: 700;
+    color: var(--p-color-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .overview-store-email {
+    font-size: var(--p-font-size-75);
+    color: var(--p-color-text-secondary);
+    margin-top: 2px;
+  }
+  .feature-pill {
+    border: 1px solid var(--p-color-border-secondary);
+    border-radius: var(--p-border-radius-200);
+    padding: 12px 16px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .feature-pill-label { font-size: var(--p-font-size-100); font-weight: 600; }
+  .feature-pill-sub   { font-size: var(--p-font-size-75); color: var(--p-color-text-secondary); margin-top: 2px; }
+
+  /* Feature card in Features tab */
+  .feature-card {
+    border: 1px solid var(--p-color-border-secondary);
+    border-radius: var(--p-border-radius-200);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .feature-card-active  { border-left: 3px solid #008060; }
+  .feature-card-soon    { border-left: 3px solid #4a9eba; }
+
+  /* Balance display */
+  .manage-balance {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--p-color-text);
+    line-height: 1;
+  }
+  .manage-balance-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 8px 0 4px;
+  }
+  .manage-balance-unit {
+    font-size: var(--p-font-size-200);
+    font-weight: 500;
+    color: var(--p-color-text-secondary);
+  }
+
+  /* ── Mode Switch ─────────────────────────────── */
+  .mode-switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  /* Stack vertically on narrow screens */
+  @media (max-width: 520px) {
+    .mode-switch { grid-template-columns: 1fr; }
+  }
+  .mode-btn {
+    border: 2px solid var(--p-color-border-secondary);
+    border-radius: var(--p-border-radius-200);
+    padding: 14px 16px;
+    background: #fff;
+    cursor: pointer;
+    text-align: left;
+    font-family: var(--p-font-family-sans);
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .mode-btn:hover { border-color: var(--p-color-border); background: #fafbfc; }
+  .mode-btn.active {
+    border-color: var(--p-color-bg-fill-brand);
+    background: #f0faf6;
+  }
+  .mode-btn-title {
+    font-size: var(--p-font-size-200);
+    font-weight: 700;
+    color: var(--p-color-text);
+  }
+  .mode-btn.active .mode-btn-title { color: var(--p-color-bg-fill-brand); }
+  .mode-btn-desc {
+    font-size: var(--p-font-size-75);
+    color: var(--p-color-text-secondary);
+    line-height: 1.5;
+  }
+  .mode-btn-icon { font-size: 1.3rem; margin-bottom: 2px; }
+  .mode-info-box {
+    border-radius: var(--p-border-radius-100);
+    padding: 10px 14px;
+    font-size: var(--p-font-size-75);
+    line-height: 1.6;
+  }
+  .mode-info-absorb { background: var(--p-color-bg-fill-success); color: #1a4731; }
+  .mode-info-resell  { background: var(--p-color-bg-fill-info);    color: #004a6b; }
+
+  /* Nav page views */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* Page heading */
+  .page-heading {
+    font-size: var(--p-font-size-300);
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--p-color-text);
+  }
+
+  /* Spinner */
+  .spinner {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Domain tag */
+  .domain-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--p-color-bg-surface-secondary);
+    border: 1px solid var(--p-color-border-secondary);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: var(--p-font-size-75);
+    margin: 4px 4px 4px 0;
+  }
+  .domain-tag-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--p-color-text-secondary);
+    font-size: 0.9rem;
+    /* Accessible touch target */
+    min-width: 28px;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: var(--p-border-radius-100);
+    line-height: 1;
+  }
+  .domain-tag-remove:hover { color: var(--p-color-text-critical); background: var(--p-color-bg-fill-critical); }
+
+  /* Info row */
+  .info-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--p-color-border-secondary);
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row-label { font-size: var(--p-font-size-75); font-weight: 600; color: var(--p-color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+  .info-row-value { font-size: var(--p-font-size-100); color: var(--p-color-text); }
+
+  /* WearOn branding accent */
+  .wearon-logo-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; height: 28px;
+    background: var(--p-color-bg-fill-brand);
+    border-radius: 6px;
+    color: #fff;
+    font-weight: 900;
+    font-size: 0.85rem;
+  }
+
+  /* ── Analytics: Stat Cards ──────────────────────────────────── */
+  .stat-card {
+    background: var(--p-color-bg-surface);
+    border: 1px solid var(--p-color-border-secondary);
+    border-radius: var(--p-border-radius-200);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stat-card-label {
+    font-size: var(--p-font-size-75);
+    font-weight: 600;
+    color: var(--p-color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .stat-card-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--p-color-text);
+    line-height: 1.1;
+  }
+  .stat-card-sub {
+    font-size: var(--p-font-size-75);
+    color: var(--p-color-text-secondary);
+    margin-top: 2px;
+  }
+  .stat-card-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: var(--p-font-size-75);
+    font-weight: 600;
+    margin-top: 2px;
+  }
+  .stat-card-delta.up   { color: var(--p-color-text-success); }
+  .stat-card-delta.down { color: var(--p-color-text-critical); }
+
+  /* Tooltip button (inline info) */
+  .tooltip-btn {
+    background: none;
+    border: 1px solid var(--p-color-border);
+    border-radius: 50%;
+    width: 15px; height: 15px;
+    cursor: pointer;
+    font-size: 0.6rem;
+    color: var(--p-color-text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    flex-shrink: 0;
+    vertical-align: middle;
+    line-height: 1;
+  }
+  .tooltip-btn:hover { background: var(--p-color-bg-fill-info); border-color: #4a9eba; color: #004a6b; }
+
+  /* ── Analytics: Mini Bar Chart ──────────────────────────────── */
+  .chart-wrap {
+    margin-top: 4px;
+  }
+  .chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 72px;
+    padding: 0 0 4px;
+    border-bottom: 1px solid var(--p-color-border-secondary);
+  }
+  .chart-bar-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    gap: 4px;
+    height: 100%;
+    justify-content: flex-end;
+  }
+  .chart-bar {
+    width: 100%;
+    border-radius: 3px 3px 0 0;
+    background: #008060;
+    opacity: 0.75;
+    min-height: 2px;
+    transition: opacity 0.15s;
+  }
+  .chart-bar:hover { opacity: 1; }
+  .chart-bar.today { background: #008060; opacity: 1; }
+  .chart-labels {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .chart-label {
+    flex: 1;
+    text-align: center;
+    font-size: 0.65rem;
+    color: var(--p-color-text-secondary);
+  }
+  .chart-label.today { color: var(--p-color-bg-fill-brand); font-weight: 600; }
+
+  /* ── Analytics: Session list ─────────────────────────────── */
+  .session-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--p-color-border-secondary);
+    gap: 12px;
+  }
+  .session-row:last-child { border-bottom: none; }
+  .session-icon {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+  .session-icon-success { background: var(--p-color-bg-fill-success); }
+  .session-icon-fail    { background: var(--p-color-bg-fill-critical); }
+  .session-meta { flex: 1; min-width: 0; }
+  .session-title { font-size: var(--p-font-size-100); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .session-time  { font-size: var(--p-font-size-75); color: var(--p-color-text-secondary); margin-top: 1px; }
+
+  /* ── Analytics: Empty state ──────────────────────────────── */
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--p-color-text-secondary);
+  }
+  .empty-state-icon {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+    opacity: 0.4;
+  }
+  .empty-state-title {
+    font-size: var(--p-font-size-200);
+    font-weight: 600;
+    color: var(--p-color-text);
+    margin-bottom: 8px;
+  }
+  .empty-state-body {
+    font-size: var(--p-font-size-100);
+    max-width: 340px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* Date range + export toolbar */
+  .analytics-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .analytics-toolbar select {
+    padding: 6px 10px;
+    border: 1px solid var(--p-color-border);
+    border-radius: var(--p-border-radius-100);
+    font-size: var(--p-font-size-75);
+    font-family: var(--p-font-family-sans);
+    color: var(--p-color-text);
+    background: #fff;
+    cursor: pointer;
+    outline: none;
+  }
+  .analytics-toolbar select:focus {
+    border-color: #008060;
+    box-shadow: 0 0 0 2px rgba(0,128,96,0.2);
+  }
+
+  /* Mode split inactive note */
+  .mode-split-inactive {
+    font-size: var(--p-font-size-75);
+    color: var(--p-color-text-secondary);
+    font-style: italic;
+    margin-top: 4px;
+  }
+
+  /* Responsive nav hide on mobile */
+  @media (max-width: 720px) {
+    .shopify-nav { display: none; }
+    .shopify-topbar { padding: 0 12px; }
+    .app-frame { padding: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     VIEW: SIGNUP
+═══════════════════════════════════════════════════════ -->
+<div id="view-signup" class="view active">
+  <div class="auth-page">
+    <div class="auth-logo">
+      <span class="wearon-logo-mark">W</span>
+      WearOn
+    </div>
+    <div class="auth-card">
+      <div id="signup-error-banner" style="display:none">
+        <div class="p-banner p-banner-critical">
+          <span class="p-banner-icon">⚠</span>
+          <div class="p-banner-body">
+            <div class="p-banner-title">Something went wrong</div>
+            Please try again or contact support.
+          </div>
+          <button class="p-banner-dismiss" aria-label="Dismiss" onclick="this.parentElement.parentElement.style.display='none'">✕</button>
+        </div>
+      </div>
+
+      <h1>Welcome to WearOn</h1>
+      <p class="auth-subtitle">Create your account to connect your store.</p>
+
+      <div class="p-field">
+        <label for="signup-name">WearOn Account Name</label>
+        <input type="text" id="signup-name" placeholder="e.g. Sunrise Boutique" autocomplete="organization" />
+      </div>
+
+      <div class="p-field">
+        <label for="signup-email">Contact Email</label>
+        <input type="email" id="signup-email" value="owner@example-store.com" autocomplete="email" />
+        <div class="p-field-helper">Pre-filled from your Shopify account</div>
+      </div>
+
+      <div class="p-field">
+        <label for="signup-password">Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="signup-password" placeholder="Min. 8 characters" autocomplete="new-password" />
+          <button type="button" class="pw-toggle" aria-label="Show password" onclick="togglePassword('signup-password', this)">👁</button>
+        </div>
+      </div>
+
+      <div class="p-field">
+        <label for="signup-password-confirm">Confirm Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="signup-password-confirm" placeholder="Re-enter your password" autocomplete="new-password" />
+          <button type="button" class="pw-toggle" aria-label="Show password" onclick="togglePassword('signup-password-confirm', this)">👁</button>
+        </div>
+      </div>
+
+      <label class="p-field-checkbox">
+        <input type="checkbox" id="signup-terms" />
+        <span>I agree to WearOn's <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></span>
+      </label>
+
+      <button class="p-btn p-btn-primary p-btn-full" id="signup-btn" onclick="handleSignup()">
+        Create Account
+      </button>
+    </div>
+
+    <div class="auth-footer">
+      Already have an account?
+      <a onclick="showView('view-login')">Log in →</a>
+    </div>
+    <div class="auth-security">🔒 Your data is encrypted and stored securely.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     VIEW: LOGIN
+═══════════════════════════════════════════════════════ -->
+<div id="view-login" class="view">
+  <div class="auth-page">
+    <div class="auth-logo">
+      <span class="wearon-logo-mark">W</span>
+      WearOn
+    </div>
+    <div class="auth-card">
+      <div id="login-error-banner" style="display:none">
+        <div class="p-banner p-banner-critical">
+          <span class="p-banner-icon">⚠</span>
+          <div class="p-banner-body">Incorrect email or password. Please try again.</div>
+          <button class="p-banner-dismiss" aria-label="Dismiss" onclick="this.parentElement.parentElement.style.display='none'">✕</button>
+        </div>
+      </div>
+
+      <h1>Welcome back</h1>
+      <p class="auth-subtitle">Log in to your WearOn account.</p>
+
+      <div class="p-field">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" placeholder="owner@example.com" autocomplete="email" />
+      </div>
+
+      <div class="p-field">
+        <label for="login-password">Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="login-password" placeholder="Your password" autocomplete="current-password" />
+          <button type="button" class="pw-toggle" aria-label="Show password" onclick="togglePassword('login-password', this)">👁</button>
+        </div>
+      </div>
+
+      <button class="p-btn p-btn-primary p-btn-full" id="login-btn" onclick="handleLogin()">
+        Log In
+      </button>
+    </div>
+
+    <div class="auth-footer" style="margin-top:12px">
+      <a href="#" onclick="showToast('Opens app.wearon.ai/forgot-password in new window'); return false;">Forgot password? Reset on WearOn →</a>
+    </div>
+    <div class="auth-footer" style="margin-top:6px">
+      Don't have an account? <a onclick="showView('view-signup')">Sign up →</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     VIEW: DASHBOARD
+═══════════════════════════════════════════════════════ -->
+<div id="view-dashboard" class="view">
+  <div class="shopify-shell">
+
+    <!-- Shopify-style left nav (decorative) -->
+    <nav class="shopify-nav" aria-label="Shopify navigation">
+      <div class="shopify-nav-logo">🛍 MyStore</div>
+      <div class="shopify-nav-item">Home</div>
+      <div class="shopify-nav-item">Orders</div>
+      <div class="shopify-nav-item">Products</div>
+      <div class="shopify-nav-item">Customers</div>
+      <div class="shopify-nav-section">Apps</div>
+      <div class="shopify-nav-item active">⚙ WearOn</div>
+      <div class="shopify-nav-item">Analytics</div>
+      <div class="shopify-nav-item">Settings</div>
+    </nav>
+
+    <div class="shopify-main">
+      <!-- Shopify top bar -->
+      <div class="shopify-topbar">
+        <span class="shopify-topbar-title">WearOn</span>
+        <div class="shopify-topbar-right">
+          <span>example-store.myshopify.com</span>
+          <button class="p-btn p-btn-secondary p-btn-sm" onclick="confirmLogout()">Log out</button>
+        </div>
+      </div>
+
+      <!-- App content -->
+      <div class="shopify-content">
+        <div class="app-frame">
+
+          <!-- ─── Connected Banner (shown after auth) ─── -->
+          <div id="connected-banner" class="p-banner p-banner-success">
+            <span class="p-banner-icon">✓</span>
+            <div class="p-banner-body">
+              <strong>Store connected successfully!</strong> WearOn is ready on your storefront.
+            </div>
+            <button class="p-banner-dismiss" aria-label="Dismiss" onclick="this.parentElement.style.display='none'">✕</button>
+          </div>
+
+          <!-- ─── Overview Board ─── -->
+          <div class="overview-board">
+            <div class="overview-board-top">
+              <div>
+                <div class="overview-store-domain">
+                  <span class="wearon-logo-mark">W</span>
+                  example-store.myshopify.com
+                  <span class="p-badge p-badge-success">● Active</span>
+                </div>
+                <div class="overview-store-email">owner@example-store.com</div>
+              </div>
+            </div>
+
+            <div class="p-inline-grid-2">
+              <div class="feature-pill">
+                <div>
+                  <div class="feature-pill-label">✓ Size Recommendation</div>
+                  <div class="feature-pill-sub">FREE · No usage required</div>
+                </div>
+                <span class="p-badge p-badge-success">Active</span>
+              </div>
+              <div class="feature-pill" id="vto-overview-pill">
+                <div>
+                  <div class="feature-pill-label">◎ Virtual Try-On</div>
+                  <div class="feature-pill-sub" id="vto-pill-sub">AI-powered outfit preview</div>
+                </div>
+                <span class="p-badge p-badge-info" id="vto-pill-badge">Coming Soon</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ─── Tabs ─── -->
+          <div class="p-tabs">
+            <ul class="p-tabs-list" role="tablist">
+              <li class="p-tab active" role="tab" aria-selected="true" tabindex="0" onclick="switchTab('main', this)" onkeydown="if(event.key==='Enter'||event.key===' ') switchTab('main', this)">Features</li>
+              <li class="p-tab" role="tab" aria-selected="false" tabindex="0" onclick="switchTab('setting', this)" onkeydown="if(event.key==='Enter'||event.key===' ') switchTab('setting', this)">Settings</li>
+              <li class="p-tab" role="tab" aria-selected="false" tabindex="0" onclick="switchTab('analytics', this)" onkeydown="if(event.key==='Enter'||event.key===' ') switchTab('analytics', this)">Insights</li>
+            </ul>
+          </div>
+
+          <!-- ── Tab: Features ── -->
+          <div id="tab-main" class="p-tab-panel active" role="tabpanel">
+
+            <div class="p-text-heading-md" style="margin-bottom:12px">Features</div>
+
+            <!-- Size Rec card -->
+            <div class="feature-card feature-card-active">
+              <div class="p-inline-stack p-inline-stack-gap-3 p-inline-stack-between" style="flex-wrap:wrap;gap:8px">
+                <div>
+                  <div class="p-inline-stack p-inline-stack-gap-2" style="margin-bottom:4px">
+                    <span style="font-size:1.1rem">✓</span>
+                    <span class="p-text-heading-sm">Size Recommendation</span>
+                    <span class="p-badge p-badge-success">Active</span>
+                  </div>
+                  <p class="p-text-body p-text-subdued" style="max-width:480px">
+                    Free AI-powered clothing size prediction for your shoppers.
+                    No usage required — available to all shoppers immediately.
+                  </p>
+                </div>
+                <span class="p-badge p-badge-success" style="font-size:0.78rem">FREE</span>
+              </div>
+            </div>
+
+            <!-- Virtual Try-On card -->
+            <div class="feature-card feature-card-soon" id="vto-feature-card">
+              <div class="p-inline-stack p-inline-stack-gap-3 p-inline-stack-between" style="flex-wrap:wrap;gap:8px">
+                <div>
+                  <div class="p-inline-stack p-inline-stack-gap-2" style="margin-bottom:4px">
+                    <span style="font-size:1.1rem" id="vto-card-icon">◎</span>
+                    <span class="p-text-heading-sm">Virtual Try-On</span>
+                    <span class="p-badge p-badge-info" id="vto-card-badge">Coming Soon</span>
+                  </div>
+                  <p class="p-text-body p-text-subdued" style="max-width:480px" id="vto-card-desc">
+                    Let shoppers see themselves wearing your products with AI generation.
+                    Activate on the WearOn platform to enable for your store.
+                  </p>
+                </div>
+              </div>
+              <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center" id="vto-card-actions">
+                <button class="p-btn p-btn-plain p-btn-sm" onclick="toggleVTO()">
+                  ◎ Enable Virtual Try-On (Demo) ↗
+                </button>
+                <button class="p-btn p-btn-secondary p-btn-sm" onclick="alert('Opens app.wearon.ai/waitlist in new window')">
+                  Join the Waitlist on WearOn ↗
+                </button>
+              </div>
+            </div>
+
+            <!-- VTO manage section — shown only when VTO is enabled -->
+            <div id="vto-manage-section" style="display:none">
+              <hr class="p-divider" />
+              <div class="p-text-heading-md" style="margin-bottom:12px">Virtual Try-On</div>
+              <div class="p-card" style="margin-bottom:0">
+                <div class="p-inline-stack p-inline-stack-between p-inline-stack-gap-3" style="flex-wrap:wrap;gap:12px">
+                  <div>
+                    <div class="p-text-sm p-text-subdued" style="margin-bottom:4px">Available Balance</div>
+                    <div class="manage-balance-row">
+                      <span class="manage-balance" id="vto-balance-display">120</span>
+                      <span class="manage-balance-unit">units</span>
+                    </div>
+                    <p class="p-text-sm p-text-subdued" style="margin-top:8px;max-width:340px">
+                      Each virtual try-on uses 1 unit. Balance syncs automatically from the WearOn platform.
+                    </p>
+                  </div>
+                  <div style="align-self:center">
+                    <button class="p-btn p-btn-primary" onclick="alert('Opens app.wearon.ai/dashboard in new window')">
+                      Manage on WearOn ↗
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mode Switch — shown only when VTO is enabled -->
+            <div id="vto-mode-section" style="display:none">
+              <hr class="p-divider" />
+              <div class="p-text-heading-md" style="margin-bottom:4px">Try-On Mode</div>
+              <p class="p-text-sm p-text-subdued" style="margin-bottom:14px">
+                Choose how try-on sessions are funded for your shoppers.
+              </p>
+              <div class="p-card" style="margin-bottom:0">
+                <div class="mode-switch">
+                  <button class="mode-btn active" id="mode-btn-absorb" onclick="openModeConfirmModal('absorb')">
+                    <div class="mode-btn-icon">🏪</div>
+                    <div class="mode-btn-title">Absorb</div>
+                    <div class="mode-btn-desc">You cover the cost. Shoppers try on for free — no friction at checkout.</div>
+                  </button>
+                  <button class="mode-btn" id="mode-btn-resell" onclick="openModeConfirmModal('resell')">
+                    <div class="mode-btn-icon">💳</div>
+                    <div class="mode-btn-title">Resell</div>
+                    <div class="mode-btn-desc">Charge shoppers per try-on. Set your own price and keep the margin.</div>
+                  </button>
+                </div>
+
+                <div class="mode-info-box mode-info-absorb" id="mode-info-absorb">
+                  <strong>Absorb mode active:</strong> Each shopper try-on deducts 1 unit from your store balance.
+                  Shoppers see no paywall — great for conversion. Best when you want zero shopper friction.
+                </div>
+                <div class="mode-info-box mode-info-resell" id="mode-info-resell" style="display:none">
+                  <strong>Resell mode active:</strong> Shoppers are charged your configured price per try-on.
+                  You still consume 1 unit per session but earn revenue that offsets the cost.
+                  Configure pricing on the WearOn platform.
+                  <br/><br/>
+                  <button class="p-btn p-btn-secondary p-btn-sm" onclick="alert('Opens app.wearon.ai/resell-settings in new window')">
+                    Configure Resell Pricing on WearOn ↗
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ── Tab: Settings ── -->
+          <div id="tab-setting" class="p-tab-panel" role="tabpanel">
+
+            <!-- Store Info -->
+            <div class="p-text-heading-md" style="margin-bottom:12px">Store Information</div>
+            <div class="p-card" style="margin-bottom:16px">
+              <div class="info-row">
+                <div class="info-row-label">Shop Domain</div>
+                <div class="info-row-value">example-store.myshopify.com</div>
+              </div>
+              <div class="info-row">
+                <div class="info-row-label">Status</div>
+                <div class="info-row-value"><span class="p-badge p-badge-success">● Active</span></div>
+              </div>
+              <div class="info-row">
+                <div class="info-row-label">Owner Email</div>
+                <div class="info-row-value">owner@example-store.com</div>
+              </div>
+              <div class="info-row">
+                <div class="info-row-label">WearOn Account</div>
+                <div class="info-row-value">Sunrise Boutique · owner@example-store.com</div>
+              </div>
+            </div>
+
+            <hr class="p-divider" />
+
+            <!-- API Key -->
+            <div class="p-text-heading-md" style="margin-bottom:12px">API Key</div>
+            <div class="p-card" style="margin-bottom:16px">
+              <div id="new-key-banner" style="display:none">
+                <div class="p-banner p-banner-warning">
+                  <span class="p-banner-icon">⚠</span>
+                  <div class="p-banner-body">
+                    <div class="p-banner-title">New API Key — Copy it now. It won't be shown again.</div>
+                    <div class="mono" style="margin:8px 0;font-size:0.78rem" id="new-key-value">wk_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6</div>
+                    <button class="p-btn p-btn-secondary p-btn-sm" onclick="copyKey()">📋 Copy to Clipboard</button>
+                  </div>
+                  <button class="p-banner-dismiss" aria-label="Dismiss" onclick="document.getElementById('new-key-banner').style.display='none'">✕</button>
+                </div>
+              </div>
+              <div class="p-block-stack p-block-stack-gap-2">
+                <div>
+                  <div class="p-text-sm p-text-subdued" style="margin-bottom:4px">Your API Key</div>
+                  <div class="mono">wk_a1b2c3d4e5f6g7h8...****</div>
+                </div>
+                <div class="p-text-sm p-text-subdued">Created: Jan 15, 2026</div>
+              </div>
+              <div style="margin-top:16px">
+                <button class="p-btn p-btn-critical" onclick="openRegenModal()">
+                  Regenerate API Key
+                </button>
+                <p class="p-text-sm p-text-subdued" style="margin-top:8px">
+                  Regenerating creates a new key and immediately deactivates the current one.
+                  Update any theme integrations before regenerating.
+                </p>
+              </div>
+            </div>
+
+            <hr class="p-divider" />
+
+            <!-- Allowed Domains -->
+            <div class="p-text-heading-md" style="margin-bottom:4px">Allowed Domains</div>
+            <p class="p-text-sm p-text-subdued" style="margin-bottom:12px">
+              The WearOn widget will only load on these domains. Add your storefront URL and any custom domains where you've embedded WearOn.
+            </p>
+            <div class="p-card" style="margin-bottom:16px">
+              <div id="domain-list">
+                <div class="domain-tag">
+                  example-store.myshopify.com
+                  <button class="domain-tag-remove" aria-label="Remove example-store.myshopify.com" onclick="removeDomain(this)">✕</button>
+                </div>
+              </div>
+              <div class="p-inline-stack p-inline-stack-gap-2" style="margin-top:12px;flex-wrap:wrap">
+                <input type="text" id="domain-input"
+                  placeholder="my-store.com"
+                  style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--p-color-border);border-radius:4px;font-size:0.875rem;font-family:inherit;outline:none"
+                  onfocus="this.style.borderColor='#008060';this.style.boxShadow='0 0 0 2px rgba(0,128,96,0.2)'"
+                  onblur="this.style.borderColor='';this.style.boxShadow=''"
+                  onkeydown="if(event.key==='Enter') addDomain()" />
+                <button class="p-btn p-btn-secondary" onclick="addDomain()">+ Add Domain</button>
+              </div>
+              <div id="domain-error" class="p-text-sm p-text-critical" style="display:none;margin-top:6px"></div>
+            </div>
+
+            <hr class="p-divider" />
+
+            <!-- WearOn Platform -->
+            <div class="p-text-heading-md" style="margin-bottom:8px">WearOn Platform</div>
+            <div class="p-card">
+              <p class="p-text-body p-text-subdued" style="margin-bottom:14px">
+                Manage your full account, balance, and advanced settings on the WearOn platform.
+              </p>
+              <button class="p-btn p-btn-secondary" onclick="alert('Opens app.wearon.ai/dashboard in new window')">
+                Open WearOn Dashboard ↗
+              </button>
+            </div>
+
+          </div>
+
+          <!-- ── Tab: Insights ── -->
+          <div id="tab-analytics" class="p-tab-panel" role="tabpanel">
+
+            <!-- ── Size Recommendation Analytics (always visible) ── -->
+            <div class="p-inline-stack p-inline-stack-between" style="margin-bottom:16px;flex-wrap:wrap;gap:8px">
+              <div>
+                <div class="p-text-heading-md" style="margin-bottom:0">Size Recommendation</div>
+                <div class="p-text-sm p-text-subdued" style="margin-top:2px">Always active · Free</div>
+              </div>
+              <div class="analytics-toolbar">
+                <select onchange="showToast('Date range updated')" aria-label="Date range">
+                  <option>Last 30 days</option>
+                  <option>Last 14 days</option>
+                  <option>Last 7 days</option>
+                  <option>This month</option>
+                </select>
+                <span class="p-badge p-badge-success">● Active</span>
+                <button class="p-btn p-btn-secondary p-btn-sm" onclick="showToast('Report exported as CSV')">↓ Export</button>
+              </div>
+            </div>
+
+            <!-- Size Rec: 4 stat cards -->
+            <div class="p-inline-grid-4" style="margin-bottom:12px">
+              <div class="stat-card" style="border-left:3px solid #008060">
+                <div class="stat-card-label">Recommendations</div>
+                <div class="stat-card-value">284</div>
+                <div class="stat-card-sub">given this month</div>
+                <div class="stat-card-delta up">↑ 67 vs last month</div>
+              </div>
+              <div class="stat-card" style="border-left:3px solid #008060">
+                <div class="stat-card-label">Accuracy Rate</div>
+                <div class="stat-card-value">91%</div>
+                <div class="stat-card-sub">shopper-confirmed fit</div>
+                <div class="stat-card-delta up">↑ 3% vs last month</div>
+              </div>
+              <div class="stat-card" style="border-left:3px solid #008060">
+                <div class="stat-card-label">Unique Shoppers</div>
+                <div class="stat-card-value">247</div>
+                <div class="stat-card-sub">used size rec</div>
+                <div class="stat-card-delta up">↑ 31 new shoppers</div>
+              </div>
+              <div class="stat-card" style="border-left:3px solid #008060">
+                <div class="stat-card-label">Add-to-Cart Rate</div>
+                <div class="stat-card-value">73%</div>
+                <div class="stat-card-sub">after recommendation</div>
+                <div class="stat-card-delta up">↑ 8% vs last month</div>
+              </div>
+            </div>
+
+            <!-- Size Rec: secondary stats -->
+            <div class="p-inline-grid-3" style="margin-bottom:20px">
+              <div class="stat-card">
+                <div class="stat-card-label">Avg Response Time</div>
+                <div class="stat-card-value">0.3s</div>
+                <div class="stat-card-sub">per recommendation</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-card-label">
+                  Return Rate Impact
+                  <button class="tooltip-btn" aria-label="How this is calculated" onclick="showToast('Estimated reduction in size-related returns, based on shoppers who used size rec vs. those who did not, over the same period.')">?</button>
+                </div>
+                <div class="stat-card-value">−22%</div>
+                <div class="stat-card-sub">fewer size returns</div>
+                <div class="stat-card-delta up">↑ saving ~$340/mo</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-card-label">Avg per Day</div>
+                <div class="stat-card-value">9.5</div>
+                <div class="stat-card-sub">recommendations / day</div>
+                <div class="stat-card-delta up">↑ peak on weekends</div>
+              </div>
+            </div>
+
+            <!-- Size Rec: usage chart -->
+            <div class="p-card" style="margin-bottom:16px">
+              <div class="p-inline-stack p-inline-stack-between" style="margin-bottom:16px;flex-wrap:wrap;gap:8px">
+                <span class="p-text-heading-sm">Daily Recommendations — Last 14 Days</span>
+                <span class="p-text-sm p-text-subdued">Peak day: Sat Feb 15 · 24 recs</span>
+              </div>
+              <div class="chart-wrap">
+                <div class="chart-bars">
+                  <div class="chart-bar-col"><div class="chart-bar" style="height:33%;background:#4a9eba"></div></div>
+                  <div class="chart-bar-col"><div class="chart-bar" style="height:54%;background:#4a9eba"></div></div>
+                  <div class="chart-bar-col"><div class="chart-bar" style="height:25%;background:#4a9eba"></div></div>
+                  <div class="chart-bar-col"><div class="chart-bar" style="height:62%;background:#4a9eba"></div></div>
+                  <div class="chart-bar-col"><div class="chart-bar" style="height:79%;background:#4a9eba"></div></div>
+                  <div class="chart-bar-col"><div class="chart-bar" style="height:100%;background:#4a9eba"></div></div>
+                  <div class="chart-bar-col"><div class="chart-bar" style="height:83%;background:#4a9eba"></div></div>
+                  <div class="chart-bar-col"><div class="chart-bar" style="height:46%;background:#4a9eba"></div></div>
+                  <div class="chart-bar-col"><div class="chart-bar" style="height:58%;background:#4a9eba"></div></div>
+                  <div class="chart-bar-col"><div class="chart-bar" style="height:71%;background:#4a9eba"></div></div>
+                  <div class="chart-bar-col"><div class="chart-bar" style="height:88%;background:#4a9eba"></div></div>
+                  <div class="chart-bar-col"><div class="chart-bar" style="height:75%;background:#4a9eba"></div></div>
+                  <div class="chart-bar-col"><div class="chart-bar" style="height:50%;background:#4a9eba"></div></div>
+                  <div class="chart-bar-col"><div class="chart-bar today" style="height:42%;background:#006e9c"></div></div>
+                </div>
+                <div class="chart-labels">
+                  <div class="chart-label">7</div><div class="chart-label">8</div>
+                  <div class="chart-label">9</div><div class="chart-label">10</div>
+                  <div class="chart-label">11</div><div class="chart-label">12</div>
+                  <div class="chart-label">13</div><div class="chart-label">14</div>
+                  <div class="chart-label">15</div><div class="chart-label">16</div>
+                  <div class="chart-label">17</div><div class="chart-label">18</div>
+                  <div class="chart-label">19</div><div class="chart-label today">20</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Size Rec: top products + size distribution -->
+            <div class="p-inline-grid-2" style="align-items:start;margin-bottom:20px">
+              <div class="p-card" style="margin-bottom:0">
+                <div class="p-text-heading-sm" style="margin-bottom:12px">Top Products by Recs</div>
+                <div class="session-row">
+                  <div style="width:28px;height:28px;background:#e8f5fa;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#006e9c;flex-shrink:0">1</div>
+                  <div class="session-meta"><div class="session-title">Classic Linen Blazer</div><div class="session-time">74 recs · Women's</div></div>
+                  <span class="p-badge p-badge-info">26%</span>
+                </div>
+                <div class="session-row">
+                  <div style="width:28px;height:28px;background:#e8f5fa;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#006e9c;flex-shrink:0">2</div>
+                  <div class="session-meta"><div class="session-title">Slim Fit Chino Pants</div><div class="session-time">58 recs · Men's</div></div>
+                  <span class="p-badge p-badge-info">20%</span>
+                </div>
+                <div class="session-row">
+                  <div style="width:28px;height:28px;background:#f0f0f0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#6d7175;flex-shrink:0">3</div>
+                  <div class="session-meta"><div class="session-title">Summer Floral Dress</div><div class="session-time">51 recs · Women's</div></div>
+                  <span class="p-badge p-badge-neutral">18%</span>
+                </div>
+                <div class="session-row">
+                  <div style="width:28px;height:28px;background:#f0f0f0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#6d7175;flex-shrink:0">4</div>
+                  <div class="session-meta"><div class="session-title">Oversized Knit Sweater</div><div class="session-time">43 recs · Unisex</div></div>
+                  <span class="p-badge p-badge-neutral">15%</span>
+                </div>
+                <div class="session-row">
+                  <div style="width:28px;height:28px;background:#f0f0f0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#6d7175;flex-shrink:0">5</div>
+                  <div class="session-meta"><div class="session-title">Ribbed Turtleneck Top</div><div class="session-time">30 recs · Women's</div></div>
+                  <span class="p-badge p-badge-neutral">11%</span>
+                </div>
+              </div>
+
+              <div class="p-card" style="margin-bottom:0">
+                <div class="p-text-heading-sm" style="margin-bottom:12px">Size Distribution Recommended</div>
+                <div style="margin-bottom:12px">
+                  <div class="p-inline-stack p-inline-stack-between" style="margin-bottom:4px">
+                    <span class="p-text-sm">XS</span><span class="p-text-sm p-text-subdued">18 recs</span>
+                  </div>
+                  <div style="height:8px;background:#e1e3e5;border-radius:4px;overflow:hidden">
+                    <div style="height:100%;width:6%;background:#4a9eba;border-radius:4px"></div>
+                  </div>
+                </div>
+                <div style="margin-bottom:12px">
+                  <div class="p-inline-stack p-inline-stack-between" style="margin-bottom:4px">
+                    <span class="p-text-sm">S</span><span class="p-text-sm p-text-subdued">54 recs</span>
+                  </div>
+                  <div style="height:8px;background:#e1e3e5;border-radius:4px;overflow:hidden">
+                    <div style="height:100%;width:19%;background:#4a9eba;border-radius:4px"></div>
+                  </div>
+                </div>
+                <div style="margin-bottom:12px">
+                  <div class="p-inline-stack p-inline-stack-between" style="margin-bottom:4px">
+                    <span class="p-text-sm">M</span><span class="p-text-sm p-text-subdued">98 recs</span>
+                  </div>
+                  <div style="height:8px;background:#e1e3e5;border-radius:4px;overflow:hidden">
+                    <div style="height:100%;width:35%;background:#006e9c;border-radius:4px"></div>
+                  </div>
+                </div>
+                <div style="margin-bottom:12px">
+                  <div class="p-inline-stack p-inline-stack-between" style="margin-bottom:4px">
+                    <span class="p-text-sm">L</span><span class="p-text-sm p-text-subdued">79 recs</span>
+                  </div>
+                  <div style="height:8px;background:#e1e3e5;border-radius:4px;overflow:hidden">
+                    <div style="height:100%;width:28%;background:#4a9eba;border-radius:4px"></div>
+                  </div>
+                </div>
+                <div style="margin-bottom:12px">
+                  <div class="p-inline-stack p-inline-stack-between" style="margin-bottom:4px">
+                    <span class="p-text-sm">XL</span><span class="p-text-sm p-text-subdued">28 recs</span>
+                  </div>
+                  <div style="height:8px;background:#e1e3e5;border-radius:4px;overflow:hidden">
+                    <div style="height:100%;width:10%;background:#4a9eba;border-radius:4px"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="p-inline-stack p-inline-stack-between" style="margin-bottom:4px">
+                    <span class="p-text-sm">XXL</span><span class="p-text-sm p-text-subdued">7 recs</span>
+                  </div>
+                  <div style="height:8px;background:#e1e3e5;border-radius:4px;overflow:hidden">
+                    <div style="height:100%;width:2%;background:#b0bcc8;border-radius:4px"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <hr class="p-divider" />
+
+            <!-- ── Virtual Try-On Analytics (VTO gated) ── -->
+            <div class="p-inline-stack p-inline-stack-between" style="margin-bottom:16px;flex-wrap:wrap;gap:8px">
+              <div>
+                <div class="p-text-heading-md" style="margin-bottom:0">Virtual Try-On</div>
+                <div class="p-text-sm p-text-subdued" style="margin-top:2px">Last 30 days</div>
+              </div>
+              <div class="analytics-toolbar">
+                <span class="p-badge" id="analytics-mode-badge" style="background:#e8f5fa;color:#004a6b;font-size:0.75rem;padding:4px 10px">Mode: Absorb</span>
+                <button class="p-btn p-btn-secondary p-btn-sm" onclick="showToast('VTO report exported as CSV')">↓ Export</button>
+              </div>
+            </div>
+
+            <!-- Empty state: shown when VTO is not active -->
+            <div id="analytics-empty">
+              <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <div class="empty-state-title">No analytics yet</div>
+                <p class="empty-state-body">
+                  Virtual Try-On insights will appear here once the feature is active on your store.
+                  Enable Virtual Try-On on the Features tab to get started.
+                </p>
+              </div>
+            </div>
+
+            <!-- Analytics content: shown when VTO is active -->
+            <div id="analytics-content" style="display:none">
+
+              <!-- Row 1: 4 primary stat cards -->
+              <div class="p-inline-grid-4" style="margin-bottom:12px">
+                <div class="stat-card">
+                  <div class="stat-card-label">Balance</div>
+                  <div class="stat-card-value">120 <span style="font-size:1rem;font-weight:500;color:var(--p-color-text-secondary)">units</span></div>
+                  <div class="stat-card-sub">remaining</div>
+                  <div class="stat-card-delta down">↓ 38 used this month</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-card-label">Used</div>
+                  <div class="stat-card-value">38</div>
+                  <div class="stat-card-sub">this month</div>
+                  <div class="stat-card-delta up">↑ 46% vs last month</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-card-label">Unique Shoppers</div>
+                  <div class="stat-card-value">31</div>
+                  <div class="stat-card-sub">tried on this month</div>
+                  <div class="stat-card-delta up">↑ 8 new shoppers</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-card-label">Success Rate</div>
+                  <div class="stat-card-value">94%</div>
+                  <div class="stat-card-sub">completed without error</div>
+                  <div class="stat-card-delta down">↓ 2% vs last month</div>
+                </div>
+              </div>
+
+              <!-- Row 2: 3 secondary stat cards -->
+              <div class="p-inline-grid-3" style="margin-bottom:20px">
+                <div class="stat-card" style="border-left:3px solid #008060">
+                  <div class="stat-card-label">Conversion Lift</div>
+                  <div class="stat-card-value">+18%</div>
+                  <div class="stat-card-sub">add-to-cart after try-on</div>
+                </div>
+                <div class="stat-card" style="border-left:3px solid #4a9eba">
+                  <div class="stat-card-label">Avg. per Day</div>
+                  <div class="stat-card-value">1.3</div>
+                  <div class="stat-card-sub">try-ons / day</div>
+                  <div class="stat-card-delta up">↑ peak on Fri–Sat</div>
+                </div>
+                <div class="stat-card" style="border-left:3px solid #b24b00" id="resell-revenue-card" style="display:none">
+                  <div class="stat-card-label">Revenue (Resell)</div>
+                  <div class="stat-card-value" id="resell-revenue-val">—</div>
+                  <div class="stat-card-sub" id="resell-revenue-sub">Enable Resell mode to see earnings</div>
+                </div>
+                <div class="stat-card" style="border-left:3px solid #b24b00" id="absorb-cost-card">
+                  <div class="stat-card-label">Cost (Absorb)</div>
+                  <div class="stat-card-value">38 <span style="font-size:1rem;font-weight:500;color:var(--p-color-text-secondary)">units</span></div>
+                  <div class="stat-card-sub">absorbed this month</div>
+                </div>
+              </div>
+
+              <!-- Usage trend chart (14 days) -->
+              <div class="p-card" style="margin-bottom:16px">
+                <div class="p-inline-stack p-inline-stack-between" style="margin-bottom:16px;flex-wrap:wrap;gap:8px">
+                  <span class="p-text-heading-sm">Daily Usage — Last 14 Days</span>
+                  <span class="p-text-sm p-text-subdued">Peak day: Fri Feb 14 · 7 sessions</span>
+                </div>
+                <div class="chart-wrap">
+                  <div class="chart-bars">
+                    <div class="chart-bar-col"><div class="chart-bar" style="height:14%"></div></div>
+                    <div class="chart-bar-col"><div class="chart-bar" style="height:28%"></div></div>
+                    <div class="chart-bar-col"><div class="chart-bar" style="height:0%"></div></div>
+                    <div class="chart-bar-col"><div class="chart-bar" style="height:42%"></div></div>
+                    <div class="chart-bar-col"><div class="chart-bar" style="height:57%"></div></div>
+                    <div class="chart-bar-col"><div class="chart-bar" style="height:71%"></div></div>
+                    <div class="chart-bar-col"><div class="chart-bar" style="height:35%"></div></div>
+                    <div class="chart-bar-col"><div class="chart-bar" style="height:28%"></div></div>
+                    <div class="chart-bar-col"><div class="chart-bar" style="height:50%"></div></div>
+                    <div class="chart-bar-col"><div class="chart-bar" style="height:64%"></div></div>
+                    <div class="chart-bar-col"><div class="chart-bar" style="height:100%"></div></div>
+                    <div class="chart-bar-col"><div class="chart-bar" style="height:78%"></div></div>
+                    <div class="chart-bar-col"><div class="chart-bar" style="height:42%"></div></div>
+                    <div class="chart-bar-col"><div class="chart-bar today" style="height:57%"></div></div>
+                  </div>
+                  <div class="chart-labels">
+                    <div class="chart-label">7</div>
+                    <div class="chart-label">8</div>
+                    <div class="chart-label">9</div>
+                    <div class="chart-label">10</div>
+                    <div class="chart-label">11</div>
+                    <div class="chart-label">12</div>
+                    <div class="chart-label">13</div>
+                    <div class="chart-label">14</div>
+                    <div class="chart-label">15</div>
+                    <div class="chart-label">16</div>
+                    <div class="chart-label">17</div>
+                    <div class="chart-label">18</div>
+                    <div class="chart-label">19</div>
+                    <div class="chart-label today">20</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Two column: top products + category breakdown -->
+              <div class="p-inline-grid-2" style="align-items:start;margin-bottom:16px">
+
+                <!-- Top products -->
+                <div class="p-card" style="margin-bottom:0">
+                  <div class="p-text-heading-sm" style="margin-bottom:12px">Top Products</div>
+                  <div class="session-row">
+                    <div style="width:28px;height:28px;background:#e3f1df;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#008060;flex-shrink:0">1</div>
+                    <div class="session-meta">
+                      <div class="session-title">Classic Linen Blazer</div>
+                      <div class="session-time">12 sessions · Women's</div>
+                    </div>
+                    <span class="p-badge p-badge-success">32%</span>
+                  </div>
+                  <div class="session-row">
+                    <div style="width:28px;height:28px;background:#e8f5fa;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#006e9c;flex-shrink:0">2</div>
+                    <div class="session-meta">
+                      <div class="session-title">Summer Floral Dress</div>
+                      <div class="session-time">9 sessions · Women's</div>
+                    </div>
+                    <span class="p-badge p-badge-info">24%</span>
+                  </div>
+                  <div class="session-row">
+                    <div style="width:28px;height:28px;background:#f0f0f0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#6d7175;flex-shrink:0">3</div>
+                    <div class="session-meta">
+                      <div class="session-title">Slim Fit Chino Pants</div>
+                      <div class="session-time">7 sessions · Men's</div>
+                    </div>
+                    <span class="p-badge p-badge-neutral">18%</span>
+                  </div>
+                  <div class="session-row">
+                    <div style="width:28px;height:28px;background:#f0f0f0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#6d7175;flex-shrink:0">4</div>
+                    <div class="session-meta">
+                      <div class="session-title">Oversized Knit Sweater</div>
+                      <div class="session-time">5 sessions · Unisex</div>
+                    </div>
+                    <span class="p-badge p-badge-neutral">13%</span>
+                  </div>
+                  <div class="session-row">
+                    <div style="width:28px;height:28px;background:#f0f0f0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#6d7175;flex-shrink:0">5</div>
+                    <div class="session-meta">
+                      <div class="session-title">Ribbed Turtleneck Top</div>
+                      <div class="session-time">3 sessions · Women's</div>
+                    </div>
+                    <span class="p-badge p-badge-neutral">8%</span>
+                  </div>
+                </div>
+
+                <!-- Category & mode breakdown -->
+                <div class="p-card" style="margin-bottom:0">
+                  <div class="p-text-heading-sm" style="margin-bottom:12px">Category Breakdown</div>
+                  <div style="margin-bottom:14px">
+                    <div class="p-inline-stack p-inline-stack-between" style="margin-bottom:4px">
+                      <span class="p-text-sm">Women's</span>
+                      <span class="p-text-sm p-text-subdued">24 sessions</span>
+                    </div>
+                    <div style="height:8px;background:#e1e3e5;border-radius:4px;overflow:hidden">
+                      <div style="height:100%;width:63%;background:#008060;border-radius:4px"></div>
+                    </div>
+                  </div>
+                  <div style="margin-bottom:14px">
+                    <div class="p-inline-stack p-inline-stack-between" style="margin-bottom:4px">
+                      <span class="p-text-sm">Men's</span>
+                      <span class="p-text-sm p-text-subdued">10 sessions</span>
+                    </div>
+                    <div style="height:8px;background:#e1e3e5;border-radius:4px;overflow:hidden">
+                      <div style="height:100%;width:26%;background:#4a9eba;border-radius:4px"></div>
+                    </div>
+                  </div>
+                  <div style="margin-bottom:14px">
+                    <div class="p-inline-stack p-inline-stack-between" style="margin-bottom:4px">
+                      <span class="p-text-sm">Unisex</span>
+                      <span class="p-text-sm p-text-subdued">4 sessions</span>
+                    </div>
+                    <div style="height:8px;background:#e1e3e5;border-radius:4px;overflow:hidden">
+                      <div style="height:100%;width:11%;background:#b0bcc8;border-radius:4px"></div>
+                    </div>
+                  </div>
+                  <hr class="p-divider" style="margin:14px 0" />
+                  <div class="p-text-heading-sm" style="margin-bottom:10px">Mode Split</div>
+                  <div style="margin-bottom:10px">
+                    <div class="p-inline-stack p-inline-stack-between" style="margin-bottom:4px">
+                      <span class="p-text-sm">Absorb</span>
+                      <span class="p-text-sm p-text-subdued" id="absorb-count">38 sessions</span>
+                    </div>
+                    <div style="height:8px;background:#e1e3e5;border-radius:4px;overflow:hidden">
+                      <div style="height:100%;background:#008060;border-radius:4px;transition:width 0.3s" id="absorb-bar" style="width:100%"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="p-inline-stack p-inline-stack-between" style="margin-bottom:4px">
+                      <span class="p-text-sm">Resell</span>
+                      <span class="p-text-sm p-text-subdued" id="resell-count">0 sessions</span>
+                    </div>
+                    <div style="height:8px;background:#e1e3e5;border-radius:4px;overflow:hidden">
+                      <div style="height:100%;width:0%;background:#4a9eba;border-radius:4px;transition:width 0.3s" id="resell-bar"></div>
+                    </div>
+                    <div id="resell-inactive-note" class="mode-split-inactive">Resell mode not yet active</div>
+                  </div>
+                </div>
+
+              </div><!-- /two-col -->
+
+              <!-- Recent sessions — full width -->
+              <div class="p-card" style="margin-bottom:16px">
+                <div class="p-inline-stack p-inline-stack-between" style="margin-bottom:12px">
+                  <span class="p-text-heading-sm">Recent Sessions</span>
+                  <span class="p-text-sm p-text-subdued">Last 8 events</span>
+                </div>
+                <div class="session-row">
+                  <div class="session-icon session-icon-success">✓</div>
+                  <div class="session-meta"><div class="session-title">Classic Linen Blazer</div><div class="session-time">2 min ago · shopper #4821 · Absorb</div></div>
+                  <span class="p-badge p-badge-success">Done</span>
+                </div>
+                <div class="session-row">
+                  <div class="session-icon session-icon-success">✓</div>
+                  <div class="session-meta"><div class="session-title">Summer Floral Dress</div><div class="session-time">18 min ago · shopper #4820 · Absorb</div></div>
+                  <span class="p-badge p-badge-success">Done</span>
+                </div>
+                <div class="session-row">
+                  <div class="session-icon session-icon-fail">✕</div>
+                  <div class="session-meta"><div class="session-title">Slim Fit Chino Pants</div><div class="session-time">41 min ago · shopper #4819 · Absorb · flagged by safety filter</div></div>
+                  <span class="p-badge p-badge-critical">Failed</span>
+                </div>
+                <div class="session-row">
+                  <div class="session-icon session-icon-success">✓</div>
+                  <div class="session-meta"><div class="session-title">Oversized Knit Sweater</div><div class="session-time">1 hr ago · shopper #4818 · Absorb</div></div>
+                  <span class="p-badge p-badge-success">Done</span>
+                </div>
+                <div class="session-row">
+                  <div class="session-icon session-icon-success">✓</div>
+                  <div class="session-meta"><div class="session-title">Classic Linen Blazer</div><div class="session-time">2 hr ago · shopper #4817 · Absorb</div></div>
+                  <span class="p-badge p-badge-success">Done</span>
+                </div>
+                <div class="session-row">
+                  <div class="session-icon session-icon-success">✓</div>
+                  <div class="session-meta"><div class="session-title">Ribbed Turtleneck Top</div><div class="session-time">3 hr ago · shopper #4816 · Absorb</div></div>
+                  <span class="p-badge p-badge-success">Done</span>
+                </div>
+                <div class="session-row">
+                  <div class="session-icon session-icon-success">✓</div>
+                  <div class="session-meta"><div class="session-title">Summer Floral Dress</div><div class="session-time">5 hr ago · shopper #4815 · Absorb</div></div>
+                  <span class="p-badge p-badge-success">Done</span>
+                </div>
+                <div class="session-row">
+                  <div class="session-icon session-icon-fail">✕</div>
+                  <div class="session-meta"><div class="session-title">Slim Fit Chino Pants</div><div class="session-time">6 hr ago · shopper #4814 · Absorb · timed out</div></div>
+                  <span class="p-badge p-badge-critical">Failed</span>
+                </div>
+              </div>
+
+            </div><!-- /analytics-content -->
+
+          </div><!-- /tab-analytics -->
+
+        </div><!-- /app-frame -->
+      </div><!-- /shopify-content -->
+    </div><!-- /shopify-main -->
+  </div><!-- /shopify-shell -->
+</div><!-- /view-dashboard -->
+
+<!-- ── Regenerate Key Modal ── -->
+<div class="p-modal-overlay" id="regen-modal" role="dialog" aria-modal="true" aria-labelledby="regen-modal-title">
+  <div class="p-modal">
+    <div class="p-modal-header">
+      <span class="p-text-heading-sm" id="regen-modal-title">Regenerate API Key</span>
+      <button class="p-banner-dismiss" aria-label="Dismiss" onclick="closeRegenModal()">✕</button>
+    </div>
+    <div class="p-modal-body">
+      <div class="p-banner p-banner-critical" style="margin-bottom:0">
+        <span class="p-banner-icon">⚠</span>
+        <div class="p-banner-body">
+          Your current API key will be <strong>immediately deactivated</strong>.
+          Any theme integrations using the old key will stop working until updated with the new key.
+        </div>
+      </div>
+    </div>
+    <div class="p-modal-footer">
+      <button class="p-btn p-btn-secondary" id="regen-cancel-btn" onclick="closeRegenModal()">Cancel</button>
+      <button class="p-btn p-btn-critical" onclick="doRegen()">Regenerate Key</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Mode Confirmation Modal ── -->
+<div class="p-modal-overlay" id="mode-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="mode-confirm-title">
+  <div class="p-modal">
+    <div class="p-modal-header">
+      <span class="p-text-heading-sm" id="mode-confirm-title">Switch Try-On Mode?</span>
+      <button class="p-banner-dismiss" aria-label="Dismiss" onclick="closeModeConfirmModal()">✕</button>
+    </div>
+    <div class="p-modal-body">
+      <p id="mode-confirm-text" style="font-size:var(--p-font-size-100);line-height:1.5;color:var(--p-color-text-secondary)"></p>
+    </div>
+    <div class="p-modal-footer">
+      <button class="p-btn p-btn-secondary" id="mode-cancel-btn" onclick="closeModeConfirmModal()">Keep Current</button>
+      <button class="p-btn p-btn-primary" onclick="confirmModeSwitch()">Switch Mode</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast ── -->
+<div class="p-toast-container">
+  <div class="p-toast" id="toast"></div>
+</div>
+
+<script>
+  /* ── View management ─────────────────────────────── */
+  function showView(id) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  /* ── Tab switching ───────────────────────────────── */
+  function switchTab(name, el) {
+    document.querySelectorAll('.p-tab').forEach(t => {
+      t.classList.remove('active');
+      t.setAttribute('aria-selected', 'false');
+    });
+    document.querySelectorAll('.p-tab-panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    el.setAttribute('aria-selected', 'true');
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+
+  /* ── Password visibility toggle ─────────────────── */
+  function togglePassword(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (input.type === 'password') {
+      input.type = 'text';
+      btn.textContent = '🙈';
+      btn.setAttribute('aria-label', 'Hide password');
+    } else {
+      input.type = 'password';
+      btn.textContent = '👁';
+      btn.setAttribute('aria-label', 'Show password');
+    }
+  }
+
+  /* ── Signup handler ──────────────────────────────── */
+  function handleSignup() {
+    const btn     = document.getElementById('signup-btn');
+    const name    = document.getElementById('signup-name').value.trim();
+    const pw      = document.getElementById('signup-password').value;
+    const pwConf  = document.getElementById('signup-password-confirm').value;
+    const terms   = document.getElementById('signup-terms').checked;
+
+    if (!name) { showToast('Please enter your account name'); return; }
+    if (pw.length < 8) { showToast('Password must be at least 8 characters'); return; }
+    if (pw !== pwConf) { showToast('Passwords do not match'); return; }
+    if (!terms) { showToast('Please agree to the Terms of Service to continue'); return; }
+
+    btn.innerHTML = '<span class="spinner"></span> Creating account…';
+    btn.disabled = true;
+
+    setTimeout(() => {
+      btn.innerHTML = 'Create Account';
+      btn.disabled = false;
+      showView('view-dashboard');
+      document.getElementById('connected-banner').style.display = 'flex';
+    }, 1400);
+  }
+
+  /* ── Login handler ───────────────────────────────── */
+  function handleLogin() {
+    const btn   = document.getElementById('login-btn');
+    const email = document.getElementById('login-email').value.trim();
+    const pw    = document.getElementById('login-password').value;
+
+    if (!email || !pw) { showToast('Please enter your email and password'); return; }
+
+    btn.innerHTML = '<span class="spinner"></span> Logging in…';
+    btn.disabled = true;
+
+    setTimeout(() => {
+      btn.innerHTML = 'Log In';
+      btn.disabled = false;
+      if (pw !== 'demo1234') {
+        document.getElementById('login-error-banner').style.display = 'block';
+        showToast('Try password: demo1234');
+        return;
+      }
+      showView('view-dashboard');
+      document.getElementById('connected-banner').style.display = 'flex';
+    }, 1200);
+  }
+
+  /* ── Log out ─────────────────────────────────────── */
+  function confirmLogout() {
+    if (confirm('Log out of WearOn?')) {
+      showView('view-login');
+    }
+  }
+
+  /* ── VTO toggle (demo) ───────────────────────────── */
+  let vtoEnabled = false;
+  let currentMode = 'absorb';
+
+  function toggleVTO() {
+    vtoEnabled = !vtoEnabled;
+
+    const pill         = document.getElementById('vto-pill-badge');
+    const pillSub      = document.getElementById('vto-pill-sub');
+    const card         = document.getElementById('vto-feature-card');
+    const cardIcon     = document.getElementById('vto-card-icon');
+    const cardBadge    = document.getElementById('vto-card-badge');
+    const cardDesc     = document.getElementById('vto-card-desc');
+    const cardActions  = document.getElementById('vto-card-actions');
+    const manageSection  = document.getElementById('vto-manage-section');
+    const modeSection    = document.getElementById('vto-mode-section');
+    const analyticsEmpty   = document.getElementById('analytics-empty');
+    const analyticsContent = document.getElementById('analytics-content');
+
+    if (vtoEnabled) {
+      pill.className = 'p-badge p-badge-success';
+      pill.textContent = 'Active';
+      pillSub.textContent = 'AI-powered · Active';
+
+      card.className = 'feature-card feature-card-active';
+      cardIcon.textContent = '✓';
+      cardBadge.className = 'p-badge p-badge-success';
+      cardBadge.textContent = 'Active';
+      cardDesc.textContent = 'Shoppers can now generate AI try-on images directly on your product pages.';
+      cardActions.innerHTML = '<button class="p-btn p-btn-plain p-btn-sm" onclick="toggleVTO()">Disable Virtual Try-On (Demo)</button>';
+
+      manageSection.style.display = 'block';
+      modeSection.style.display = 'block';
+      analyticsEmpty.style.display = 'none';
+      analyticsContent.style.display = 'block';
+
+      showToast('Virtual Try-On enabled');
+    } else {
+      pill.className = 'p-badge p-badge-info';
+      pill.textContent = 'Coming Soon';
+      pillSub.textContent = 'AI-powered outfit preview';
+
+      card.className = 'feature-card feature-card-soon';
+      cardIcon.textContent = '◎';
+      cardBadge.className = 'p-badge p-badge-info';
+      cardBadge.textContent = 'Coming Soon';
+      cardDesc.textContent = 'Let shoppers see themselves wearing your products with AI generation. Activate on the WearOn platform to enable for your store.';
+      cardActions.innerHTML = `
+        <button class="p-btn p-btn-plain p-btn-sm" onclick="toggleVTO()">◎ Enable Virtual Try-On (Demo) ↗</button>
+        <button class="p-btn p-btn-secondary p-btn-sm" onclick="alert('Opens app.wearon.ai/waitlist in new window')">Join the Waitlist on WearOn ↗</button>
+      `;
+
+      manageSection.style.display = 'none';
+      modeSection.style.display = 'none';
+      analyticsEmpty.style.display = 'block';
+      analyticsContent.style.display = 'none';
+
+      showToast('Virtual Try-On disabled');
+    }
+  }
+
+  /* ── Mode confirmation modal ─────────────────────── */
+  let pendingMode = null;
+
+  function openModeConfirmModal(targetMode) {
+    if (targetMode === currentMode) return; // already active, no-op
+    pendingMode = targetMode;
+
+    const messages = {
+      absorb: 'Switching to <strong>Absorb</strong> mode means you cover the cost of each try-on. Shoppers get a frictionless experience — no payment required.',
+      resell: 'Switching to <strong>Resell</strong> mode means shoppers are charged your configured price per try-on. Make sure you\'ve set up pricing on WearOn before switching.'
+    };
+
+    document.getElementById('mode-confirm-text').innerHTML = messages[targetMode];
+    const modal = document.getElementById('mode-confirm-modal');
+    modal.classList.add('open');
+    // Focus the cancel button for keyboard safety
+    setTimeout(() => document.getElementById('mode-cancel-btn').focus(), 50);
+    trapFocus(modal);
+  }
+
+  function closeModeConfirmModal() {
+    document.getElementById('mode-confirm-modal').classList.remove('open');
+    pendingMode = null;
+  }
+
+  function confirmModeSwitch() {
+    closeModeConfirmModal();
+    if (pendingMode) setMode(pendingMode);
+  }
+
+  /* ── Mode switch (Absorb / Resell) ───────────────── */
+  function setMode(mode) {
+    currentMode = mode;
+
+    const btnAbsorb  = document.getElementById('mode-btn-absorb');
+    const btnResell  = document.getElementById('mode-btn-resell');
+    const infoAbsorb = document.getElementById('mode-info-absorb');
+    const infoResell = document.getElementById('mode-info-resell');
+    const modeBadge  = document.getElementById('analytics-mode-badge');
+    const resellInactive = document.getElementById('resell-inactive-note');
+
+    if (mode === 'absorb') {
+      btnAbsorb.classList.add('active');
+      btnResell.classList.remove('active');
+      infoAbsorb.style.display = 'block';
+      infoResell.style.display = 'none';
+      if (modeBadge) {
+        modeBadge.style.background = '#e8f5fa';
+        modeBadge.style.color = '#004a6b';
+        modeBadge.textContent = 'Mode: Absorb';
+      }
+      document.getElementById('absorb-count').textContent = '38 sessions';
+      document.getElementById('resell-count').textContent = '0 sessions';
+      document.getElementById('absorb-bar').style.width = '100%';
+      document.getElementById('resell-bar').style.width = '0%';
+      if (resellInactive) resellInactive.style.display = 'block';
+      document.getElementById('absorb-cost-card').style.display = '';
+      document.getElementById('resell-revenue-card').style.display = 'none';
+      document.querySelectorAll('.session-time').forEach(el => {
+        el.textContent = el.textContent.replace('Resell', 'Absorb');
+      });
+      showToast('Mode set to Absorb');
+    } else {
+      btnResell.classList.add('active');
+      btnAbsorb.classList.remove('active');
+      infoResell.style.display = 'block';
+      infoAbsorb.style.display = 'none';
+      if (modeBadge) {
+        modeBadge.style.background = '#fff5ea';
+        modeBadge.style.color = '#7a3500';
+        modeBadge.textContent = 'Mode: Resell';
+      }
+      document.getElementById('absorb-count').textContent = '14 sessions';
+      document.getElementById('resell-count').textContent = '24 sessions';
+      document.getElementById('absorb-bar').style.width = '37%';
+      document.getElementById('resell-bar').style.width = '63%';
+      if (resellInactive) resellInactive.style.display = 'none';
+      document.getElementById('absorb-cost-card').style.display = 'none';
+      document.getElementById('resell-revenue-card').style.display = '';
+      document.getElementById('resell-revenue-val').textContent = '$47.80';
+      document.getElementById('resell-revenue-sub').textContent = 'earned from shopper try-ons';
+      document.querySelectorAll('.session-time').forEach(el => {
+        if (el.textContent.includes('Absorb')) el.textContent = el.textContent.replace('Absorb', 'Resell');
+      });
+      showToast('Mode set to Resell');
+    }
+  }
+
+  /* ── API Key regen ───────────────────────────────── */
+  function openRegenModal() {
+    const modal = document.getElementById('regen-modal');
+    modal.classList.add('open');
+    setTimeout(() => document.getElementById('regen-cancel-btn').focus(), 50);
+    trapFocus(modal);
+  }
+  function closeRegenModal() { document.getElementById('regen-modal').classList.remove('open'); }
+
+  function doRegen() {
+    closeRegenModal();
+    const chars = 'abcdef0123456789';
+    const newKey = 'wk_' + Array.from({length:32}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+    document.getElementById('new-key-value').textContent = newKey;
+    document.getElementById('new-key-banner').style.display = 'block';
+    showToast('API key regenerated — copy it now!');
+  }
+
+  function copyKey() {
+    const key = document.getElementById('new-key-value').textContent;
+    navigator.clipboard.writeText(key).then(() => showToast('API key copied!')).catch(() => showToast('Copy failed — select manually'));
+  }
+
+  /* ── Domains ─────────────────────────────────────── */
+  function addDomain() {
+    const input = document.getElementById('domain-input');
+    const errEl = document.getElementById('domain-error');
+    let val = input.value.trim();
+
+    errEl.style.display = 'none';
+
+    if (!val) {
+      errEl.textContent = 'Enter a domain to add.';
+      errEl.style.display = 'block';
+      input.focus();
+      return;
+    }
+
+    // Strip protocol and trailing slashes
+    val = val.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+
+    // Basic format check: must contain a dot
+    if (!val.includes('.') || val.length < 4) {
+      errEl.textContent = 'Enter a valid domain, e.g. my-store.com';
+      errEl.style.display = 'block';
+      input.focus();
+      return;
+    }
+
+    // Duplicate check
+    const existing = Array.from(document.querySelectorAll('.domain-tag')).map(el => {
+      return el.firstChild.textContent.trim();
+    });
+    if (existing.includes(val)) {
+      errEl.textContent = 'This domain is already in your list.';
+      errEl.style.display = 'block';
+      input.focus();
+      return;
+    }
+
+    const list = document.getElementById('domain-list');
+    const tag = document.createElement('div');
+    tag.className = 'domain-tag';
+    tag.innerHTML = `${val} <button class="domain-tag-remove" aria-label="Remove ${val}" onclick="removeDomain(this)">✕</button>`;
+    list.appendChild(tag);
+    input.value = '';
+    showToast('Domain added');
+  }
+
+  function removeDomain(btn) {
+    btn.closest('.domain-tag').remove();
+    showToast('Domain removed');
+  }
+
+  /* ── Focus trap for modals ───────────────────────── */
+  function trapFocus(modal) {
+    const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    const first = focusable[0];
+    const last  = focusable[focusable.length - 1];
+
+    function handler(e) {
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
+
+    // Remove previous trap if any
+    modal._trapHandler && modal.removeEventListener('keydown', modal._trapHandler);
+    modal._trapHandler = handler;
+    modal.addEventListener('keydown', handler);
+
+    // Close on Escape
+    function escHandler(e) {
+      if (e.key === 'Escape') {
+        modal.classList.remove('open');
+        modal.removeEventListener('keydown', escHandler);
+      }
+    }
+    modal.addEventListener('keydown', escHandler);
+  }
+
+  /* ── Toast ───────────────────────────────────────── */
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  /* ── Init: enable VTO on load so all sections are visible ── */
+  (function init() {
+    vtoEnabled = true;
+    document.getElementById('vto-pill-badge').className = 'p-badge p-badge-success';
+    document.getElementById('vto-pill-badge').textContent = 'Active';
+    document.getElementById('vto-pill-sub').textContent = 'AI-powered · Active';
+    document.getElementById('vto-feature-card').className = 'feature-card feature-card-active';
+    document.getElementById('vto-card-icon').textContent = '✓';
+    document.getElementById('vto-card-badge').className = 'p-badge p-badge-success';
+    document.getElementById('vto-card-badge').textContent = 'Active';
+    document.getElementById('vto-card-desc').textContent = 'Shoppers can now generate AI try-on images directly on your product pages.';
+    document.getElementById('vto-card-actions').innerHTML =
+      '<button class="p-btn p-btn-plain p-btn-sm" onclick="toggleVTO()">Disable Virtual Try-On (Demo)</button>';
+    document.getElementById('vto-manage-section').style.display = 'block';
+    document.getElementById('vto-mode-section').style.display = 'block';
+    document.getElementById('analytics-empty').style.display = 'none';
+    document.getElementById('analytics-content').style.display = 'block';
+  })();
+</script>
+</body>
+</html>
