@@ -47,7 +47,6 @@ __tests__/
   tryon-accessibility.test.js     # ARIA, focus, touch targets, forced-colors, live regions
   size-rec-display.test.js        # Size formatting, confidence threshold, input sanitization
 
-docs/                             # Architecture diagrams, API contracts, prototypes
 shopify.app.toml                  # Shopify app config (client_id, scopes, redirect URLs)
 ```
 
@@ -56,7 +55,7 @@ shopify.app.toml                  # Shopify app config (client_id, scopes, redir
 ### Widget Lifecycle
 1. `tryon-block.liquid` renders a `<div data-wearon-tryon>` host and loads `tryon-widget.js` as a module script (product pages only)
 2. `createTryOnWidget()` attaches a Shadow DOM to the host, builds the full UI tree imperatively, and starts the access-mode state machine
-3. Widget calls `GET /api/store-config` to resolve billing mode, then conditionally fetches `GET /api/shopper-credits/balance`
+3. Widget calls `GET /api/v1/stores/config` to resolve billing mode, then conditionally fetches `GET /api/v1/credits/shopper`
 4. On config errors, widget **fails closed** (requires login, blocks access)
 
 ### Key Design Decisions
@@ -66,9 +65,11 @@ shopify.app.toml                  # Shopify app config (client_id, scopes, redir
 - **Session storage** for privacy acknowledgment and age verification (with 24h timestamp expiry on age gate)
 
 ### API Contracts (consumed from upstream)
-- `GET /api/store-config` — returns `billing_mode`, `retail_credit_price`, `shop_domain`, `shopify_variant_id`
-- `GET /api/shopper-credits/balance` — returns `balance`, `total_purchased`, `total_spent`
+- `GET /api/store-config` — returns store config (`billing_mode`, `retail_credit_price`, `shop_domain`, `shopify_variant_id`)
+- `GET /api/shopper-credits/balance` — returns shopper credit state (`balance`, `total_purchased`, `total_spent`)
 - Checkout link: `https://{shop_domain}/cart/{variant_id}:{quantity}` (opens in new tab)
+
+> **Note:** Source code uses non-versioned paths above (via Shopify app proxy). The upstream platform may expose these at versioned `/api/v1/*` paths. The widget's `configEndpoint` and `shopperBalanceEndpoint` are injectable via options — no code change needed to switch paths.
 
 ## Testing Conventions
 
@@ -86,3 +87,48 @@ Performance budget tests:
 - Size recommendation values are sanitized against `[A-Z0-9]{1,10}` to prevent XSS
 - All size inputs use `textContent` (never `innerHTML`)
 - `Intl.NumberFormat` for credit price display
+
+---
+
+## Documentation
+
+Plugin documentation lives in the upstream monorepo at `../docs/Shopify-Plugin-docs/`:
+- `architecture.md` — widget lifecycle, state machine, runtime flow diagrams
+- `api-contracts.md` — runtime API contracts consumed by the widget
+- `SHOPIFY_PLUGIN_SPEC.md` — functional specification
+- `plugin-api-endpoints.md` — full API endpoints reference
+- `bmad/` — brainstorming, UX specs, project context
+- `artifacts/` — interactive HTML prototypes
+
+Tech spec (canonical location): `../docs/_bmad/implementation-artifacts/tech-spec-merchant-analytics-size-rec-vto.md`
+
+## Cross-Repo Spec Sync Addendum (2026-02-22)
+
+This repo must align with upstream spec:
+`../docs/_bmad/implementation-artifacts/tech-spec-merchant-analytics-size-rec-vto.md`
+
+### Canonical endpoint paths
+
+- Use versioned B2B paths: `/api/v1/*`
+- Store config: `GET /api/v1/stores/config`
+- Shopper credits: `GET /api/v1/credits/shopper` (resell mode)
+
+### New plugin-consumed analytics/event endpoints
+
+- `POST /api/v1/size-rec/events`
+- `POST /api/v1/size-rec/feedback`
+- `GET /api/v1/stores/analytics/size-rec`
+- `POST /api/v1/generation/events`
+- `GET /api/v1/stores/analytics/vto`
+
+### New webhook/cron awareness
+
+- `POST /api/v1/webhooks/shopify/refunds` for size-rec implicit return attribution.
+- `GET/POST /api/cron/feature-stats` for batched daily aggregation.
+
+### Integration constraints
+
+- `event_id` is required and must be retry-stable (reuse same value on retries).
+- VTO tracking context key is `client_session_id` (not `session_id`).
+- Feedback endpoint is token-based and rate-limited.
+- CORS is enforced server-side against allowed domains tied to the store API key.

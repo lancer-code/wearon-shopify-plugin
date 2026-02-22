@@ -6,4 +6,4 @@
 user_name: Glactic
 communication_language: English
 document_output_language: English
-output_folder: "{project-root}/./docs/bmad"
+output_folder: "{project-root}/../docs/Shopify-Plugin-docs/bmad"

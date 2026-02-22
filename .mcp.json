@@ -7,6 +7,31 @@
         "--package=agentvibes",
         "agentvibes-mcp-server"
       ]
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "sbp_55e1af5530164f7b8a7d497a7d29765fb036f349"
+      ]
+    },
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp",
+        "--api-key",
+        "ctx7sk-de06a8ff-cb40-44ad-8468-9719437e17ad"
+      ]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "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"
+      }
     }
   }
 }
