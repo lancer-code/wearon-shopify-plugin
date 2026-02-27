@@ -106,9 +106,11 @@ describe('tryon privacy flow', () => {
     expect(shouldRequireLogin({ billingMode: 'resell_mode' })).toBe(true)
   })
 
-  test('reads billing_mode and retail_credit_price from API config endpoint', async () => {
+  test('reads billing_mode and retail_credit_price from v1 config endpoint by default', async () => {
+    const endpoints = []
     const apiClient = {
-      get() {
+      get(endpoint) {
+        endpoints.push(endpoint)
         return Promise.resolve({
           data: {
             data: {
@@ -133,6 +135,7 @@ describe('tryon privacy flow', () => {
     expect(access.shopifyVariantId).toBe('123456789')
     expect(access.requireLogin).toBe(true)
     expect(access.retailCreditPriceLabel).toBe('$0.50 per credit')
+    expect(endpoints).toEqual(['/api/v1/stores/config', '/api/v1/stores/config'])
   })
 
   test('builds direct cart link from shop domain and variant id', () => {
@@ -157,9 +160,11 @@ describe('tryon privacy flow', () => {
     expect(opened).toEqual([['https://store.myshopify.com/cart/123:1', '_blank', 'noopener,noreferrer']])
   })
 
-  test('reads shopper balance payload from proxy endpoint', async () => {
+  test('reads shopper balance payload from v1 endpoint by default', async () => {
+    const endpoints = []
     const apiClient = {
-      get() {
+      get(endpoint) {
+        endpoints.push(endpoint)
         return Promise.resolve({
           data: {
             data: {
@@ -177,6 +182,51 @@ describe('tryon privacy flow', () => {
       balance: 2,
       totalPurchased: 5,
       totalSpent: 3,
+    })
+    expect(endpoints).toEqual(['/api/v1/credits/shopper'])
+  })
+
+  test('supports both current and legacy shopper balance payload keys', async () => {
+    let callCount = 0
+    const apiClient = {
+      get() {
+        callCount += 1
+        if (callCount === 1) {
+          return Promise.resolve({
+            data: {
+              data: {
+                balance: 4,
+                total_added: 6,
+                total_used: 2,
+              },
+            },
+          })
+        }
+
+        return Promise.resolve({
+          data: {
+            data: {
+              balance: 1,
+              total_purchased: 3,
+              total_spent: 2,
+            },
+          },
+        })
+      },
+    }
+
+    const v1Balance = await getShopperCreditBalance(apiClient)
+    const legacyBalance = await getShopperCreditBalance(apiClient)
+
+    expect(v1Balance).toEqual({
+      balance: 4,
+      totalPurchased: 6,
+      totalSpent: 2,
+    })
+    expect(legacyBalance).toEqual({
+      balance: 1,
+      totalPurchased: 3,
+      totalSpent: 2,
     })
   })
 

@@ -263,7 +263,7 @@ describe('tryon widget', () => {
     expect(widget.liveRegion.textContent).toContain('Unable to load try-on configuration')
   })
 
-  test('in resell mode with zero balance, shows purchase flow and enables try-on after polling', async () => {
+  test('in resell mode with zero balance, shows credit top-up flow and enables try-on after polling', async () => {
     const hostElement = createHostElement()
     const documentRef = createFakeDocument()
     const checkoutLinks = []
@@ -310,7 +310,7 @@ describe('tryon widget', () => {
 
     expect(widget.purchaseButton.className).toContain('wearon-widget__purchase--active')
     expect(widget.button.disabled).toBe(true)
-    expect(widget.button.textContent).toBe('Buy Credits to Try On')
+    expect(widget.button.textContent).toBe('Add Credits to Continue')
     expect(widget.creditBalanceText.textContent).toContain('0 credits')
 
     await widget.purchaseButton.click()

@@ -19,7 +19,8 @@ const DEFAULT_LOADING_TEXT = 'Loading...'
 const DEFAULT_LOADING_DELAY_MS = 700
 const PRIVACY_MESSAGE = 'Your photo is deleted within 6 hours'
 const DEFAULT_AUDIO_CUE = 'Center yourself.'
-const DEFAULT_SHOPPER_BALANCE_ENDPOINT = '/api/shopper-credits/balance'
+const DEFAULT_CONFIG_ENDPOINT = '/api/v1/stores/config'
+const DEFAULT_SHOPPER_BALANCE_ENDPOINT = '/api/v1/credits/shopper'
 const POSE_DIRECTION_CUES = {
   left: 'Move left.',
   right: 'Move right.',
@@ -279,8 +280,8 @@ export function createTryOnWidget(hostElement, options = {}) {
   const purchaseButton = doc.createElement('button')
   purchaseButton.type = 'button'
   purchaseButton.className = 'wearon-widget__purchase'
-  purchaseButton.textContent = 'Buy Credits'
-  purchaseButton.setAttribute('aria-label', 'Buy try-on credits')
+  purchaseButton.textContent = 'Add Credits'
+  purchaseButton.setAttribute('aria-label', 'Add try-on credits')
 
   const cameraView = doc.createElement('video')
   cameraView.className = 'wearon-widget__camera'
@@ -365,8 +366,8 @@ export function createTryOnWidget(hostElement, options = {}) {
 
     if (billingMode === 'resell_mode' && !hasResellCredits) {
       button.disabled = true
-      button.textContent = 'Buy Credits to Try On'
-      button.setAttribute('aria-label', 'Buy credits before virtual try-on')
+      button.textContent = 'Add Credits to Continue'
+      button.setAttribute('aria-label', 'Add credits before virtual try-on')
       purchaseButton.className = 'wearon-widget__purchase wearon-widget__purchase--active'
       return
     }
@@ -385,8 +386,8 @@ export function createTryOnWidget(hostElement, options = {}) {
 
     if (requireLogin) {
       creditBalanceText.textContent = access?.retailCreditPriceLabel
-        ? `Sign in to use credits. ${access.retailCreditPriceLabel}`
-        : 'Sign in to use credits.'
+        ? `Sign in to manage credits. ${access.retailCreditPriceLabel}`
+        : 'Sign in to manage credits.'
       return
     }
 
@@ -531,7 +532,10 @@ export function createTryOnWidget(hostElement, options = {}) {
     }
 
     try {
-      const access = await resolveTryOnAccessFn(apiClient, options.configEndpoint)
+      const access = await resolveTryOnAccessFn(
+        apiClient,
+        options.configEndpoint || DEFAULT_CONFIG_ENDPOINT,
+      )
       applyAccess(access)
       if (access?.billingMode === 'resell_mode') {
         try {
@@ -606,17 +610,17 @@ export function createTryOnWidget(hostElement, options = {}) {
     })
 
     if (!cartLink) {
-      setLiveStatus('Unable to start checkout. Store credit product is not configured.')
+      setLiveStatus('Unable to start credit top-up. Store credit product is not configured.')
       return
     }
 
     const opened = openCreditCheckoutFn(cartLink, options.windowRef)
     if (!opened) {
-      setLiveStatus('Unable to open checkout. Please allow popups and try again.')
+      setLiveStatus('Unable to open credit top-up. Please allow popups and try again.')
       return
     }
 
-    setLiveStatus('Checkout opened. Checking for updated credits.')
+    setLiveStatus('Credit top-up opened. Checking for updated credits.')
 
     try {
       const latestBalance = await pollShopperCreditBalanceFn(apiClient, {

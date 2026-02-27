@@ -3,8 +3,8 @@ const AGE_VERIFIED_KEY = 'wearon_age_verified_v1'
 const AGE_VERIFIED_TIMESTAMP_KEY = 'wearon_age_verified_ts_v1'
 const MAX_AGE_VERIFICATION_DURATION_MS = 24 * 60 * 60 * 1000 // 24 hours
 const PRIVACY_ACK_KEY = 'wearon_privacy_ack_v1'
-const DEFAULT_CONFIG_ENDPOINT = '/api/store-config'
-const DEFAULT_SHOPPER_BALANCE_ENDPOINT = '/api/shopper-credits/balance'
+const DEFAULT_CONFIG_ENDPOINT = '/api/v1/stores/config'
+const DEFAULT_SHOPPER_BALANCE_ENDPOINT = '/api/v1/credits/shopper'
 
 function getSessionStorage(storageRef) {
   if (storageRef) {
@@ -192,8 +192,10 @@ export async function getShopperCreditBalance(
 
   return {
     balance: Number(data.balance || 0),
-    totalPurchased: Number(data.total_purchased || data.totalPurchased || 0),
-    totalSpent: Number(data.total_spent || data.totalSpent || 0),
+    totalPurchased: Number(
+      data.total_added || data.totalAdded || data.total_purchased || data.totalPurchased || 0,
+    ),
+    totalSpent: Number(data.total_used || data.totalUsed || data.total_spent || data.totalSpent || 0),
   }
 }
 
