@@ -319,7 +319,7 @@ export function createTryOnWidget(hostElement, options = {}) {
 
   const ageBlockedText = doc.createElement('p')
   ageBlockedText.className = 'wearon-widget__privacy'
-  ageBlockedText.style.display = 'none'
+  setElementDisplay(ageBlockedText, 'none')
   ageBlockedText.textContent = 'This feature is not available for users under 13.'
 
   ageGateContainer.appendChild(ageGateText)
@@ -341,6 +341,16 @@ export function createTryOnWidget(hostElement, options = {}) {
   liveRegion.setAttribute('role', 'status')
   liveRegion.setAttribute('aria-live', 'polite')
   liveRegion.setAttribute('aria-atomic', 'true')
+
+  function setElementDisplay(element, displayValue) {
+    if (!element) {
+      return
+    }
+
+    if (element.style && typeof element.style === 'object') {
+      element.style.display = displayValue
+    }
+  }
 
   const audioToggleButton = doc.createElement('button')
   audioToggleButton.type = 'button'
@@ -448,13 +458,13 @@ export function createTryOnWidget(hostElement, options = {}) {
 
   const updateAgeGateVisibility = () => {
     if (ageVerified) {
-      ageGateContainer.style.display = 'none'
-      ageBlockedText.style.display = 'none'
-      privacyText.style.display = ''
-      privacyButton.style.display = ''
+      setElementDisplay(ageGateContainer, 'none')
+      setElementDisplay(ageBlockedText, 'none')
+      setElementDisplay(privacyText, '')
+      setElementDisplay(privacyButton, '')
     } else {
-      privacyText.style.display = 'none'
-      privacyButton.style.display = 'none'
+      setElementDisplay(privacyText, 'none')
+      setElementDisplay(privacyButton, 'none')
       button.disabled = true
     }
   }
@@ -462,21 +472,21 @@ export function createTryOnWidget(hostElement, options = {}) {
   ageConfirmButton.addEventListener('click', () => {
     persistAgeVerification(sessionStorageRef)
     ageVerified = true
-    ageGateContainer.style.display = 'none'
-    ageBlockedText.style.display = 'none'
-    privacyText.style.display = ''
-    privacyButton.style.display = ''
+    setElementDisplay(ageGateContainer, 'none')
+    setElementDisplay(ageBlockedText, 'none')
+    setElementDisplay(privacyText, '')
+    setElementDisplay(privacyButton, '')
     setTryOnButtonState()
     setLiveStatus('Age verified. Please acknowledge the privacy notice to continue.')
   })
 
   ageDenyButton.addEventListener('click', () => {
-    ageGateContainer.style.display = 'none'
-    ageBlockedText.style.display = 'block'
-    privacyText.style.display = 'none'
-    privacyButton.style.display = 'none'
+    setElementDisplay(ageGateContainer, 'none')
+    setElementDisplay(ageBlockedText, 'block')
+    setElementDisplay(privacyText, 'none')
+    setElementDisplay(privacyButton, 'none')
     button.disabled = true
-    button.style.display = 'none'
+    setElementDisplay(button, 'none')
     setLiveStatus('This feature is not available for users under 13.')
   })
 

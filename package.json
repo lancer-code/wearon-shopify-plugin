@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node ../node_modules/vitest/vitest.mjs run"
+    "test": "node ./node_modules/vitest/vitest.mjs run"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.18"
   }
 }
